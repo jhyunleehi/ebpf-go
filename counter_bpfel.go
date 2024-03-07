@@ -63,12 +63,12 @@ type counterMapSpecs struct {
 // counterObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadCounterObjects or ebpf.CollectionSpec.LoadAndAssign.
-type CounterObjects struct {
+type counterObjects struct {
 	counterPrograms
 	counterMaps
 }
 
-func (o *CounterObjects) Close() error {
+func (o *counterObjects) Close() error {
 	return _CounterClose(
 		&o.counterPrograms,
 		&o.counterMaps,
