@@ -1,45 +1,17 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/signal"
 	"time"
 
-	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	"github.com/cilium/ebpf/rlimit"
+
 )
 
 func main() {	
-
-	spec, err := ebpf.LoadCollectionSpec("counter.bpf.o")
-	if err != nil {
-		panic(err)
-	}
-	// Look up the MapSpec and ProgramSpec in the CollectionSpec.
-	m := spec.Maps["pkt_count"]
-	p := spec.Programs["count_packets"]
-	// Note: We've omitted nil checks for brevity, take a look at
-	// LoadAndAssign for an automated way of checking for maps/programs.
-
-	// Inspect the map and program type.
-	fmt.Println(m.Type, p.Type)
-
-	// Print the map's key and value BTF types.
-	fmt.Println(m.Key, m.Value)
-
-	// Print the program's instructions in a human-readable form,
-	// similar to llvm-objdump -S.
-	fmt.Println(p.Instructions)
-
-	// Remove resource limits for kernels <5.11.
-	if err := rlimit.RemoveMemlock(); err != nil {
-		log.Fatal("Removing memlock:", err)
-	}
-
 	// Load the compiled eBPF ELF and load it into the kernel.
 	objs := counterObjects{}
 	if err := loadCounterObjects(&objs, nil); err != nil {
