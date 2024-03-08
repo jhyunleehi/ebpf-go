@@ -8,7 +8,8 @@ all: $(TARGET)
 .PHONY: all 
 
 $(TARGET): $(USER_C) $(USER_SKEL) 
-	echo  "make..."
+	echo  go build...
+	go build main.go
 
 %.bpf.o: %.bpf.c vmlinux.h
 	clang \
@@ -26,9 +27,8 @@ vmlinux.h:
 	bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
 
 clean:
-	- rm $(BPF_OBJ)
-	- rm $(TARGET)
-	- rm find-map
+	- rm $(BPF_OBJ)	
+	- rm main
 
 find-map: find-map.c
 	gcc -Wall -o find-map find-map.c -L../libbpf/src -l:libbpf.a -lelf -lz

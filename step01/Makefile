@@ -5,11 +5,17 @@ BPF_OBJ = ${TARGET:=.bpf.o}
 USER_C = ${TARGET:=.c}
 USER_SKEL = ${TARGET:=.skel.h}
 
-all: $(TARGET) $(BPF_OBJ) find-map
+export GOPACKAGE := main
+
+all: $(TARGET) $(BPF_OBJ)
 .PHONY: all 
 
 $(TARGET): $(USER_C) $(USER_SKEL) 
-	gcc -Wall -o $(TARGET) $(USER_C) -L../libbpf/src -l:libbpf.a -lelf -lz
+	echo  go build...	
+	go get github.com/cilium/ebpf/cmd/bpf2go
+	# go run github.com/cilium/ebpf/cmd/bpf2go -type event ${TARGET} ${TARGET}.c -- -I../headers
+	go generate
+	go build  
 
 %.bpf.o: %.bpf.c vmlinux.h
 	clang \
@@ -27,8 +33,5 @@ vmlinux.h:
 
 clean:
 	- rm $(BPF_OBJ)
-	- rm $(TARGET)
-	- rm find-map
+	- rm $(TARGET)	
 
-find-map: find-map.c
-	gcc -Wall -o find-map find-map.c -L../libbpf/src -l:libbpf.a -lelf -lz
