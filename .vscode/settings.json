@@ -21,7 +21,9 @@
         "utility": "c",
         "variant": "c",
         "bpf_tracing.h": "c",
-        "bpf_endian.h": "c"
+        "bpf_endian.h": "c",
+        "common.h": "c",
+        "core_fixes.bpf.h": "c"
     },
     "cmake.configureOnOpen": false,
     "C_Cpp.errorSquiggles": "disabled"
