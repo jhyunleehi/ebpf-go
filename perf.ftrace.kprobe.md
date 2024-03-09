@@ -1,159 +1,32 @@
-# tool 
-### kprobe event 어떻게 발견하는가?
-* /sys/kernel/debug/tracing/available_events
-* perf 
-* kprobe 
-```sh
-$ sudo apt install linux-tools-common
-$ sudo apt install linux-tools-generic
-$ sudo apt install linux-tools-6.5.0-18-generic
-$ sudo apt install trace-cmd
-$ sudo trace-cmd list -l | grep  exec
-workqueue:workqueue_execute_end
-workqueue:workqueue_execute_start
-sched:sched_process_exec
-sched:sched_kthread_work_execute_end
-sched:sched_kthread_work_execute_start
-syscalls:sys_exit_kexec_load
-syscalls:sys_enter_kexec_load
-syscalls:sys_exit_kexec_file_load
-syscalls:sys_enter_kexec_file_load
-syscalls:sys_exit_execveat
-syscalls:sys_enter_execveat
-syscalls:sys_exit_execve
-syscalls:sys_enter_execve
-writeback:writeback_exec
-libata:ata_exec_command
-```
-### ftrace 가능한 커널 함수 목록: 
-* /sys/kernel/debug/tracing/available_filter
-```sh
-root@Good:/sys/kernel/debug/tracing# grep  blk_account_io  /sys/kernel/debug/tracing/available_filter
-available_filter_functions:blk_account_io_merge_bio
-available_filter_functions:blk_account_io_completion.part.0
-available_filter_functions_addrs:ffffffff87f77a90 blk_account_io_merge_bio
-available_filter_functions_addrs:ffffffff87f7b5b0 blk_account_io_completion.part.0
-```
+# perf,ftrace,kbrobe
 
-### trace argement format 
-*  /sys/kernel/debug/tracing/events/random/urandom_read/format 디렉토리에서  format 파일을 통해 argument format를 찾을 수 있다.  
+## perf와 ftrace 차이점 비교
+ChatGPT
+perf와 ftrace는 모두 리눅스 커널에서 성능 분석 및 추적을 위한 도구입니다. 하지만 각각은 다음과 같은 차이점이 있습니다:
 
-```c
-// from /sys/kernel/debug/tracing/events/random/urandom_read/format
-struct urandom_read_args {    
-    u64 __unused__;
-    u32 got_bits;
-    u32 pool_left;
-    u32 input_left;
-};
-```
+### 1. 목적:
+* perf: perf는 퍼포먼스 분석 및 프로파일링 도구로 널리 사용됩니다. CPU 사용률, 메모리 사용량, 함수 호출 등과 같은 다양한 성능 지표를 수집하고 분석하는 데 사용됩니다.
+* ftrace: ftrace는 리눅스 커널 내에서 발생하는 이벤트를 추적하기 위한 도구로, 커널 함수 호출, 인터럽트, 스케줄링 이벤트 등을 추적할 수 있습니다. 보통 커널의 동작을 디버깅하거나 커널 내부 동작을 이해하기 위해 사용됩니다.
 
-### trace-cmd
-```
-$ sudo trace-cmd list | grep bio
-block:block_bio_remap
-block:block_bio_queue
-block:block_bio_frontmerge
-block:block_bio_backmerge
-block:block_bio_bounce
-block:block_bio_complete
-```
+### 2. 수집 대상:
+* perf: 주로 유저 공간에서 발생하는 이벤트를 추적하며, CPU 성능 분석에 특히 유용합니다. 프로세스 간의 이벤트 추적, 시스템 전체의 프로파일링, 커널 함수 실행 시간 등을 측정할 수 있습니다.
+* ftrace: 주로 커널 내에서 발생하는 이벤트를 추적하며, 커널 함수 호출, 인터럽트, 스케줄링 이벤트 등을 추적할 수 있습니다. 이는 커널 내부의 동작을 이해하거나 디버깅할 때 유용합니다.
 
-### SYSCALL 목록 확인
-* 현재 kernel의 system call 목록과 이름 확인 
-```
-$ grep   __SYSCALL /usr/include/asm-generic/unistd.h
-$ grep   clone  /usr/include/asm-generic/unistd.h
+### 3. 사용 방법:
 
-#define __NR_clone 220
-__SYSCALL(__NR_clone, sys_clone)
-#define __NR_clone3 435
-__SYSCALL(__NR_clone3, sys_clone3)
+* perf: perf 명령을 사용하여 성능 측정 및 프로파일링을 수행할 수 있습니다. 사용자 공간에서 실행되는 프로세스의 프로파일링, CPU 이벤트의 추적, 각종 리눅스 시스템 리소스 모니터링에 사용됩니다.
+* ftrace: trace-cmd 명령을 사용하여 ftrace를 활성화하고 이벤트를 추적합니다. 커널 내부의 이벤트를 추적하기 때문에 일반적으로 시스템 관리자나 커널 개발자들이 사용합니다.
 
-```
-### 커널 심볼 
-```
-$ cat /proc/kallsyms | grep blk_account_io_done
-```
+### 4. 정확성 및 오버헤드:
 
-### iotop 
-```
-source code
-```
+* perf: 성능 측정을 위한 높은 정확성을 제공하지만, 이를 위해 상당한 시스템 리소스를 소모합니다.
+* ftrace: 커널 내부에서 동작하기 때문에 일반적으로 perf보다 더 낮은 오버헤드를 가집니다. 그러나 정확성 측면에서는 일부 제약이 있을 수 있습니다.
 
-### BPF_HASH
-* 제일 궁금한 것은 BPF_HASH(counter_table) 이것이 어디에 정의 되어 있는가?
-* BPF_HASH() is a BCC macro that defines a hash table map. 라고 하는데 어디에 정의되어 있는지를 모르겠네..
-* 무슨 소스 코드가 이렇게 되어 있냐?
-  - You can navigate to the src/cc directory and find the bpf_helpers.h file where the BPF_HASH() macro is defined
-  - The source code for the BPF_HASH() macro in BCC (BPF Compiler Collection) can be found in the BCC GitHub repository. 
-  - BCC is an open-source project, and its source code is hosted on GitHub. 
-  - You can find the definition of the BPF_HASH() macro in the bpf_helpers.h header file within the BCC repository.
-  - 이것이 macro 인데 실제 파일에 가서 보면  
-* bcc repository에서  소스 코드가 이렇게 되어 있는 것은 무엇을 의미하냐 ?  R"********(  
-이런 사연이 있었구만 ...
-
-소스 코드가 `R"********(`와 같은 형태로 시작되는 것은 C++11부터 도입된 Raw String Literal 문법을 나타냅니다. 이 문법을 사용하면 문자열을 이스케이프 문자 없이 그대로 표현할 수 있습니다. "********"는 임의의 종료 문자열로, 소스 코드 내에서 나오는 문자열이 이 문자열로 끝나는 것을 나타냅니다.
-
-`bcc/src/export/helpers.h` 에 정의된 내용 을 보면 BPF_F_TABLE macro로 정의한 것을 사용한다. 
-
-```c
-R"********(
-
-#define BPF_F_TABLE(_table_type, _key_type, _leaf_type, _name, _max_entries, _flags) \
-struct _name##_table_t { \
-  _key_type key; \
-  _leaf_type leaf; \
-  _leaf_type * (*lookup) (_key_type *); \
-  _leaf_type * (*lookup_or_init) (_key_type *, _leaf_type *); \
-  _leaf_type * (*lookup_or_try_init) (_key_type *, _leaf_type *); \
-  int (*update) (_key_type *, _leaf_type *); \
-  int (*insert) (_key_type *, _leaf_type *); \
-  int (*delete) (_key_type *); \
-  void (*call) (void *, int index); \
-  void (*increment) (_key_type, ...); \
-  void (*atomic_increment) (_key_type, ...); \
-  int (*get_stackid) (void *, u64); \
-  void * (*sk_storage_get) (void *, void *, int); \
-  int (*sk_storage_delete) (void *); \
-  void * (*inode_storage_get) (void *, void *, int); \
-  int (*inode_storage_delete) (void *); \
-  void * (*task_storage_get) (void *, void *, int); \
-  int (*task_storage_delete) (void *); \
-  u32 max_entries; \
-  int flags; \
-}; \
-__attribute__((section("maps/" _table_type))) \
-struct _name##_table_t _name = { .flags = (_flags), .max_entries = (_max_entries) }; \
-BPF_ANNOTATE_KV_PAIR(_name, _key_type, _leaf_type)
-
-
-
-#define BPF_TABLE(_table_type, _key_type, _leaf_type, _name, _max_entries) \
-BPF_F_TABLE(_table_type, _key_type, _leaf_type, _name, _max_entries, 0)
-
-
-#define BPF_HASH1(_name) \
-  BPF_TABLE("hash", u64, u64, _name, 10240)
-#define BPF_HASH2(_name, _key_type) \
-  BPF_TABLE("hash", _key_type, u64, _name, 10240)
-#define BPF_HASH3(_name, _key_type, _leaf_type) \
-  BPF_TABLE("hash", _key_type, _leaf_type, _name, 10240)
-#define BPF_HASH4(_name, _key_type, _leaf_type, _size) \
-  BPF_TABLE("hash", _key_type, _leaf_type, _name, _size)
-
-// helper for default-variable macro function
-#define BPF_HASHX(_1, _2, _3, _4, NAME, ...) NAME
-
-
-// Define a hash function, some arguments optional
-// BPF_HASH(name, key_type=u64, leaf_type=u64, size=10240)
-#define BPF_HASH(...) \
-  BPF_HASHX(__VA_ARGS__, BPF_HASH4, BPF_HASH3, BPF_HASH2, BPF_HASH1)(__VA_ARGS__)
-
-```
-
-
+### 요약
+* perf는 유저 공간에서의 성능 측정 및 프로파일링에 주로 사용되는 반면, 
+* ftrace는 주로 커널 내부의 동작을 추적하고 이해하는 데 사용됩니다. 
+* perf는 높은 정확성을 제공하지만 오버헤드가 크고, 
+* ftrace는 상대적으로 낮은 오버헤드를 가지지만 정확성 측면에서는 일부 제약이 있을 수 있습니다.
 
 ##  kprobe  and  ftrace (/sys/kernel/debug/tracing) 차이점 
 
@@ -387,4 +260,87 @@ $ stat  ./hello
 $ sudo uftrace -K 5 ./hello
 $ sudo uftrace record -K 5 ./hello
 $ sudo uftrace tui
+```
+
+
+## kprobe event 어떻게 발견하는가?
+* /sys/kernel/debug/tracing/available_events
+* perf 
+* kprobe 
+```sh
+$ sudo apt install linux-tools-common
+$ sudo apt install linux-tools-generic
+$ sudo apt install linux-tools-6.5.0-18-generic
+$ sudo apt install trace-cmd
+$ sudo trace-cmd list -l | grep  exec
+workqueue:workqueue_execute_end
+workqueue:workqueue_execute_start
+sched:sched_process_exec
+sched:sched_kthread_work_execute_end
+sched:sched_kthread_work_execute_start
+syscalls:sys_exit_kexec_load
+syscalls:sys_enter_kexec_load
+syscalls:sys_exit_kexec_file_load
+syscalls:sys_enter_kexec_file_load
+syscalls:sys_exit_execveat
+syscalls:sys_enter_execveat
+syscalls:sys_exit_execve
+syscalls:sys_enter_execve
+writeback:writeback_exec
+libata:ata_exec_command
+```
+### ftrace 가능한 커널 함수 목록: 
+* /sys/kernel/debug/tracing/available_filter
+```sh
+root@Good:/sys/kernel/debug/tracing# grep  blk_account_io  /sys/kernel/debug/tracing/available_filter
+available_filter_functions:blk_account_io_merge_bio
+available_filter_functions:blk_account_io_completion.part.0
+available_filter_functions_addrs:ffffffff87f77a90 blk_account_io_merge_bio
+available_filter_functions_addrs:ffffffff87f7b5b0 blk_account_io_completion.part.0
+```
+
+### trace argement format 
+*  /sys/kernel/debug/tracing/events/random/urandom_read/format 디렉토리에서  format 파일을 통해 argument format를 찾을 수 있다.  
+
+```c
+// from /sys/kernel/debug/tracing/events/random/urandom_read/format
+struct urandom_read_args {    
+    u64 __unused__;
+    u32 got_bits;
+    u32 pool_left;
+    u32 input_left;
+};
+```
+
+### trace-cmd
+```
+$ sudo trace-cmd list | grep bio
+block:block_bio_remap
+block:block_bio_queue
+block:block_bio_frontmerge
+block:block_bio_backmerge
+block:block_bio_bounce
+block:block_bio_complete
+```
+
+### SYSCALL 목록 확인
+* 현재 kernel의 system call 목록과 이름 확인 
+```
+$ grep   __SYSCALL /usr/include/asm-generic/unistd.h
+$ grep   clone  /usr/include/asm-generic/unistd.h
+
+#define __NR_clone 220
+__SYSCALL(__NR_clone, sys_clone)
+#define __NR_clone3 435
+__SYSCALL(__NR_clone3, sys_clone3)
+
+```
+### 커널 심볼 
+```
+$ cat /proc/kallsyms | grep blk_account_io_done
+```
+
+### iotop 
+```
+source code
 ```
