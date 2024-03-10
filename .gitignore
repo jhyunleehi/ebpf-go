@@ -5,8 +5,5 @@ __debug*
 */*.o
 
 # ignore all
-*/*
-# no ignore with extensions 
-!*/*.*
-!*/Makefile
-!*/
+*/step*
+*/run*
