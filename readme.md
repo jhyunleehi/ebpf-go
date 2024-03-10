@@ -481,3 +481,17 @@ Supported targets:
         riscv64
         s390x
 root@Good:~/go/src/ebpf-go/step06-filelife# 
+
+
+
+
+https://docs.kernel.org/bpf/libbpf/index.html
+
+
+https://docs.kernel.org/bpf/libbpf/libbpf_overview.html
+
+https://libbpf.readthedocs.io/en/latest/api.html
+
+https://docs.kernel.org/bpf/libbpf/program_types.html
+
+
