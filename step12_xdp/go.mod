@@ -1,4 +1,4 @@
-module ebpf-go/step10
+module ebpf-go/step12
 
 go 1.22.0
 
