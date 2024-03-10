@@ -2,6 +2,7 @@
 __debug*
 */__debug*
 */vmlinux.h
+*/*.o
 
 # ignore all
 */*

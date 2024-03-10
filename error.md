@@ -72,3 +72,16 @@ exit status 1
 make: *** [Makefile:16: tcprtt] 오류 1
 root@Good:~/go/src/ebpf-go/step09# 
 ```
+
+#### fix it 
+* only support -rageget amd64 
+```Makefile 
+$(TARGET): $(USER_SKEL) 
+	echo  go build...	
+	go get github.com/cilium/ebpf/cmd/bpf2go
+    # go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel  -type event bpf ${TARGET}.c -- -I../headers
+    # go run github.com/cilium/ebpf/cmd/bpf2go -target bpfeb  -type event bpf ${TARGET}.c -- -I../headers
+	go run github.com/cilium/ebpf/cmd/bpf2go -target amd64  -type event bpf ${TARGET}.c -- -I../headers
+	go generate
+	go build  
+```

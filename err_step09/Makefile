@@ -13,7 +13,7 @@ all: $(TARGET)
 $(TARGET): $(USER_SKEL) 
 	echo  go build...	
 	go get github.com/cilium/ebpf/cmd/bpf2go
-	go run github.com/cilium/ebpf/cmd/bpf2go  bpf ${TARGET}.c -- -I../headers
+	go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel  -type event bpf ${TARGET}.c -- -I../headers
 	go generate
 	go build  
 
