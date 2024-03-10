@@ -4,12 +4,12 @@
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
-struct bpf_map_def SEC("maps") counting_map = {
-	.type        = BPF_MAP_TYPE_ARRAY,
-	.key_size    = sizeof(u32),
-	.value_size  = sizeof(u64),
-	.max_entries = 1,
-};
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY); 
+    __type(key, __u32);
+    __type(value, __u64);
+    __uint(max_entries, 1);
+} counting_map SEC(".maps"); 
 
 // This struct is defined according to the following format file:
 // /sys/kernel/tracing/events/kmem/mm_page_alloc/format
@@ -26,7 +26,7 @@ struct alloc_info {
 // This tracepoint is defined in mm/page_alloc.c:__alloc_pages_nodemask()
 // Userspace pathname: /sys/kernel/tracing/events/kmem/mm_page_alloc
 SEC("tracepoint/kmem/mm_page_alloc")
-int mm_page_alloc(struct alloc_info *info) {
+int my_mm_page_alloc(struct alloc_info *info) {
 	u32 key     = 0;
 	u64 initval = 1, *valp;
 

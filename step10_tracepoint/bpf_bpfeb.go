@@ -53,7 +53,7 @@ type bpfSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfProgramSpecs struct {
-	MmPageAlloc *ebpf.ProgramSpec `ebpf:"mm_page_alloc"`
+	MyMmPageAlloc *ebpf.ProgramSpec `ebpf:"my_mm_page_alloc"`
 }
 
 // bpfMapSpecs contains maps before they are loaded into the kernel.
@@ -95,12 +95,12 @@ func (m *bpfMaps) Close() error {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfPrograms struct {
-	MmPageAlloc *ebpf.Program `ebpf:"mm_page_alloc"`
+	MyMmPageAlloc *ebpf.Program `ebpf:"my_mm_page_alloc"`
 }
 
 func (p *bpfPrograms) Close() error {
 	return _BpfClose(
-		p.MmPageAlloc,
+		p.MyMmPageAlloc,
 	)
 }
 

@@ -1,5 +1,22 @@
 # tool 
-### kprobe event 어떻게 발견하는가?
+
+## kprobe 
+
+### do_sys_open  kernel 함수 
+
+```sh
+$ grep do_sys_open /proc/kallsyms
+
+$ echo 'p:function:do_sys_open' > /sys/kernel/debug/tracing/kprobe_events
+
+$ echo 1 > /sys/kernel/debug/tracing/events/kprobes/enable
+
+$ cat /sys/kernel/debug/tracing/trace
+```
+
+
+
+### event 어떻게 발견하는가?
 * /sys/kernel/debug/tracing/available_events
 * perf 
 * kprobe 
@@ -25,6 +42,7 @@ syscalls:sys_enter_execve
 writeback:writeback_exec
 libata:ata_exec_command
 ```
+
 ### ftrace 가능한 커널 함수 목록: 
 * /sys/kernel/debug/tracing/available_filter
 ```sh
