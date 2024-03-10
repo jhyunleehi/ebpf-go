@@ -8,4 +8,5 @@ __debug*
 */*
 # no ignore with extensions 
 !*/*.*
+!*/Makefile
 !*/
