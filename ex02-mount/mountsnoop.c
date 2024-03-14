@@ -225,8 +225,7 @@ int umount_entry(struct trace_event_raw_sys_enter *ctx) {
   __u64 flags = (__u64)ctx->args[1];
 
   int pid = bpf_get_current_pid_tgid() >> 32;
-  const char fmt_str[] = "sys_enter_umount===>> [%d]";
-  bpf_trace_printk(fmt_str, sizeof(fmt_str), pid);    
+  bpf_printk("sys_enter_umount===>> [%d]",pid); 
 
   return probe_entry(NULL, dest, NULL, flags, NULL, UMOUNT);
 }
@@ -235,9 +234,8 @@ int umount_entry(struct trace_event_raw_sys_enter *ctx) {
 
 SEC("tracepoint/syscalls/sys_exit_umount")
 int umount_exit(struct trace_event_raw_sys_exit *ctx) {
-  int pid = bpf_get_current_pid_tgid() >> 32;
-  const char fmt_str[] = "sys_exit_umount===>> [%d]";
-  bpf_trace_printk(fmt_str, sizeof(fmt_str), pid);    
+  int pid = bpf_get_current_pid_tgid() >> 32;  
+  bpf_printk("sys_exit_umount===>> [%d]",pid);  
   
   //return probe_exit(ctx, (int)ctx->ret);
   return 0;
