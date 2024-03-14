@@ -38,4 +38,6 @@ vmlinux.h:
 clean:
 	- rm $(BPF_OBJ)		
 	- rm *.o
+	- rm vmlinux.h
+	
 

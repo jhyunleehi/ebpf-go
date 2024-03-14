@@ -13,9 +13,14 @@ import (
 )
 
 type bpfArg struct {
-	Ts uint64
-	Op uint32
-	_  [4]byte
+	Ts    uint64
+	Flags uint64
+	Src   uint64
+	Dest  uint64
+	Fs    uint64
+	Data  uint64
+	Op    uint32
+	_     [4]byte
 }
 
 type bpfEvent struct {

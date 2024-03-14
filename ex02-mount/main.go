@@ -33,14 +33,30 @@ func main() {
 	}
 	defer objs.Close()
 
-	// Open a Kprobe at the entry point of the kernel function and attach the
-	// pre-compiled program. Each time the kernel function enters, the program
-	// will emit an event containing pid and command of the execved task.
-	kp, err := link.Tracepoint("syscalls","sys_enter_openat",objs.SyscallsSysEnterOpenat,nil)
+	
+	kp, err := link.Tracepoint("syscalls","sys_enter_mount",objs.MountEntry,nil)
 	if err != nil {
 		log.Fatalf("opening kprobe: %s", err)
 	}
 	defer kp.Close()
+
+	kp2, err := link.Tracepoint("syscalls","sys_exit_mount",objs.MountExit,nil)
+	if err != nil {
+		log.Fatalf("opening kprobe: %s", err)
+	}
+	defer kp2.Close()
+
+	kp3, err := link.Tracepoint("syscalls","sys_enter_umount",objs.UmountEntry,nil)
+	if err != nil {
+		log.Fatalf("opening kprobe: %s", err)
+	}
+	defer kp3.Close()
+
+	kp4, err := link.Tracepoint("syscalls","sys_exit_umount",objs.UmountExit,nil)
+	if err != nil {
+		log.Fatalf("opening kprobe: %s", err)
+	}
+	defer kp4.Close()
 
 	// Open a ringbuf reader from userspace RINGBUF map described in the
 	// eBPF C program.
@@ -80,7 +96,36 @@ func main() {
 			log.Printf("parsing ringbuf event: %s", err)
 			continue
 		}
+		
+		commBytes := make([]byte, len(event.Comm))
+		for i, v := range event.Comm {
+			commBytes[i] = byte(v)
+		}
+		log.Printf("pid: %d\tcomm: %s\n", event.Pid, unix.ByteSliceToString(commBytes))
+		
+		fsBytes := make([]byte, len(event.Fs))
+		for i, v := range event.Fs {
+			fsBytes[i] = byte(v)
+		}
+		log.Printf("pid: %d\t fs: %s\n", event.Pid, unix.ByteSliceToString(fsBytes))
 
-		log.Printf("pid: %d\tcomm: %s\n", event.Pid, unix.ByteSliceToString(event.Comm[:]))
+		srcBytes := make([]byte, len(event.Src))
+		for i, v := range event.Src {
+			srcBytes[i] = byte(v)
+		}
+		log.Printf("pid: %d\t src: %s\n", event.Pid, unix.ByteSliceToString(srcBytes))
+
+		destBytes := make([]byte, len(event.Dest))
+		for i, v := range event.Dest {
+			destBytes[i] = byte(v)
+		}
+		log.Printf("pid: %d\t dest: %s\n", event.Pid, unix.ByteSliceToString(destBytes))
+		
+		dataBytes := make([]byte, len(event.Data))
+		for i, v := range event.Data {
+			dataBytes[i] = byte(v)
+		}
+		log.Printf("pid: %d\t data: %s\n", event.Pid, unix.ByteSliceToString(dataBytes))
+
 	}
 }
