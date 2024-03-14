@@ -5,7 +5,6 @@ __debug*
 */*.o
 
 # ignore all
-*/*
-# no ignore with extensions 
-!*/*.*
-!*/
+*/step*
+*/run*
+*/*.log
