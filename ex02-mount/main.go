@@ -156,10 +156,13 @@ const (
 	UMOUNT uint32 = 1
 )
 
-func strerrno(flags int32) string {
-	errnum := syscall.Errno(flags)
-	str := fmt.Sprintf("%d:%s", flags, errnum.Error())
-	return str
+func strerrno(eno int32) string {
+	if eno < 0 {
+		eno*=-1
+	}
+	errnum := syscall.Errno(eno)	
+	fmt.Printf("%d:%s", eno, errnum.Error())
+	return errnum.Error()
 }
 
 func getflags(flags uint64) string {
