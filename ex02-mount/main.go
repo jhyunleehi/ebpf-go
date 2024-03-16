@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/cilium/ebpf/link"
@@ -15,7 +17,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func main() {	
+func main() {
 
 	// Subscribe to signals for terminating the program.
 	stopper := make(chan os.Signal, 1)
@@ -33,26 +35,25 @@ func main() {
 	}
 	defer objs.Close()
 
-	
-	kp, err := link.Tracepoint("syscalls","sys_enter_mount",objs.MountEntry,nil)
+	kp, err := link.Tracepoint("syscalls", "sys_enter_mount", objs.MountEntry, nil)
 	if err != nil {
 		log.Fatalf("opening kprobe: %s", err)
 	}
 	defer kp.Close()
 
-	kp2, err := link.Tracepoint("syscalls","sys_exit_mount",objs.MountExit,nil)
+	kp2, err := link.Tracepoint("syscalls", "sys_exit_mount", objs.MountExit, nil)
 	if err != nil {
 		log.Fatalf("opening kprobe: %s", err)
 	}
 	defer kp2.Close()
 
-	kp3, err := link.Tracepoint("syscalls","sys_enter_umount",objs.UmountEntry,nil)
+	kp3, err := link.Tracepoint("syscalls", "sys_enter_umount", objs.UmountEntry, nil)
 	if err != nil {
 		log.Fatalf("opening kprobe: %s", err)
 	}
 	defer kp3.Close()
 
-	kp4, err := link.Tracepoint("syscalls","sys_exit_umount",objs.UmountExit,nil)
+	kp4, err := link.Tracepoint("syscalls", "sys_exit_umount", objs.UmountExit, nil)
 	if err != nil {
 		log.Fatalf("opening kprobe: %s", err)
 	}
@@ -96,36 +97,112 @@ func main() {
 			log.Printf("parsing ringbuf event: %s", err)
 			continue
 		}
-		
-		commBytes := make([]byte, len(event.Comm))
-		for i, v := range event.Comm {
-			commBytes[i] = byte(v)
-		}
-		log.Printf("pid: %d\tcomm: %s\n", event.Pid, unix.ByteSliceToString(commBytes))
-		
-		fsBytes := make([]byte, len(event.Fs))
-		for i, v := range event.Fs {
-			fsBytes[i] = byte(v)
-		}
-		log.Printf("pid: %d\t fs: %s\n", event.Pid, unix.ByteSliceToString(fsBytes))
 
-		srcBytes := make([]byte, len(event.Src))
-		for i, v := range event.Src {
-			srcBytes[i] = byte(v)
-		}
-		log.Printf("pid: %d\t src: %s\n", event.Pid, unix.ByteSliceToString(srcBytes))
+		log.Printf("pid: %d\tcomm: [%s]\n", event.Pid, convToString(event.Comm[:]))
+		log.Printf("pid: %d\t fs: [%+v]\n", event.Pid, convToString(event.Fs[:]))
 
-		destBytes := make([]byte, len(event.Dest))
-		for i, v := range event.Dest {
-			destBytes[i] = byte(v)
+		log.Printf("pid: %d\t src: [%s]\n", event.Pid, convToString(event.Src[:]))
+		log.Printf("pid: %d\t dest: [%s]\n", event.Pid, convToString(event.Dest[:]))
+		log.Printf("pid: %d\t data: [%s]\n", event.Pid, convToString(event.Data[:]))
+
+		var call_str string
+		if event.Op == MOUNT {
+			log.Printf("MOUNT")
+			call_str = fmt.Sprintf("mount(%s,%s,%s,%s,%s=%s)", //"A","B","C","D","E","F")
+				convToString(event.Src[:]),
+				convToString(event.Dest[:]),
+				convToString(event.Fs[:]),
+				getflags(event.Flags),
+				convToString(event.Data[:]),
+				strerrno(event.Ret))
+		} else {
+			log.Printf("UMOUNT")
 		}
-		log.Printf("pid: %d\t dest: %s\n", event.Pid, unix.ByteSliceToString(destBytes))
-		
-		dataBytes := make([]byte, len(event.Data))
-		for i, v := range event.Data {
-			dataBytes[i] = byte(v)
-		}
-		log.Printf("pid: %d\t data: %s\n", event.Pid, unix.ByteSliceToString(dataBytes))
+
+		log.Printf("%-16s %-7d %-7d %d %s\n", convToString(event.Comm[:]), event.Pid, event.Tid, event.MntNs, call_str)
 
 	}
+}
+
+func convToString(param interface{}) string {
+	switch v := param.(type) {
+	case int:
+		fmt.Println("type:", v)
+	case string:
+		fmt.Println("type:", v)
+		return param.(string)
+	case []int8:
+		ival := param.([]int8)
+		dbytes := make([]byte, len(ival))
+		for i, v := range ival {
+			dbytes[i] = byte(v)
+		}
+		//str:=string(dbytes) //not handle null character
+		str := unix.ByteSliceToString(dbytes)
+		return strings.Trim(str, " ")
+	default:
+		fmt.Println("type:", v)
+	}
+	return ""
+}
+
+const (
+	MOUNT  uint32 = 0
+	UMOUNT uint32 = 1
+)
+
+func strerrno(flags int32) string {
+	errnum := syscall.Errno(flags)
+	str := fmt.Sprintf("%d:%s", flags, errnum.Error())
+	return str
+}
+
+func getflags(flags uint64) string {
+	slist := []string{}
+	if flags == 0 {
+		return "0x0"
+	}
+
+	for i := 0; i < len(flag_names); i++ {
+		if ((1 << i) & flags) == 0 {
+			continue
+		}
+		slist = append(slist, flag_names[i])
+	}
+	return strings.Join(slist, "|")
+}
+
+var flag_names = []string{
+	"MS_RDONLY",
+	"MS_NOSUID",
+	"MS_NODEV",
+	"MS_NOEXEC",
+	"MS_SYNCHRONOUS",
+	"MS_REMOUNT",
+	"MS_MANDLOCK",
+	"MS_DIRSYNC",
+	"MS_NOSYMFOLLOW",
+	"MS_NOATIME",
+	"MS_NODIRATIME",
+	"MS_BIND",
+	"MS_MOVE",
+	"MS_REC",
+	"MS_VERBOSE",
+	"MS_SILENT",
+	"MS_POSIXACL",
+	"MS_UNBINDABLE",
+	"MS_PRIVATE",
+	"MS_SLAVE",
+	"MS_SHARED",
+	"MS_RELATIME",
+	"MS_KERNMOUNT",
+	"MS_I_VERSION",
+	"MS_STRICTATIME",
+	"MS_LAZYTIME",
+	"MS_SUBMOUNT",
+	"MS_NOREMOTELOCK",
+	"MS_NOSEC",
+	"MS_BORN",
+	"MS_ACTIVE",
+	"MS_NOUSER",
 }
