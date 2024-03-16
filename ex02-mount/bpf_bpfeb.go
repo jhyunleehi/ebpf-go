@@ -90,9 +90,10 @@ type bpfProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfMapSpecs struct {
-	Args   *ebpf.MapSpec `ebpf:"args"`
-	Events *ebpf.MapSpec `ebpf:"events"`
-	Heap   *ebpf.MapSpec `ebpf:"heap"`
+	Args     *ebpf.MapSpec `ebpf:"args"`
+	CountMap *ebpf.MapSpec `ebpf:"count_map"`
+	Events   *ebpf.MapSpec `ebpf:"events"`
+	Heap     *ebpf.MapSpec `ebpf:"heap"`
 }
 
 // bpfObjects contains all objects after they have been loaded into the kernel.
@@ -114,14 +115,16 @@ func (o *bpfObjects) Close() error {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfMaps struct {
-	Args   *ebpf.Map `ebpf:"args"`
-	Events *ebpf.Map `ebpf:"events"`
-	Heap   *ebpf.Map `ebpf:"heap"`
+	Args     *ebpf.Map `ebpf:"args"`
+	CountMap *ebpf.Map `ebpf:"count_map"`
+	Events   *ebpf.Map `ebpf:"events"`
+	Heap     *ebpf.Map `ebpf:"heap"`
 }
 
 func (m *bpfMaps) Close() error {
 	return _BpfClose(
 		m.Args,
+		m.CountMap,
 		m.Events,
 		m.Heap,
 	)

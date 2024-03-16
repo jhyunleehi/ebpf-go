@@ -98,17 +98,10 @@ func main() {
 			continue
 		}
 
-		log.Printf("pid: %d\tcomm: [%s]\n", event.Pid, convToString(event.Comm[:]))
-		log.Printf("pid: %d\t fs: [%+v]\n", event.Pid, convToString(event.Fs[:]))
-
-		log.Printf("pid: %d\t src: [%s]\n", event.Pid, convToString(event.Src[:]))
-		log.Printf("pid: %d\t dest: [%s]\n", event.Pid, convToString(event.Dest[:]))
-		log.Printf("pid: %d\t data: [%s]\n", event.Pid, convToString(event.Data[:]))
-
 		var call_str string
 		if event.Op == MOUNT {
-			log.Printf("MOUNT")
-			call_str = fmt.Sprintf("mount(%s,%s,%s,%s,%s=%s)", //"A","B","C","D","E","F")
+			//log.Printf("MOUNT")
+			call_str = fmt.Sprintf("mount(%s,%s,%s,%s,%s = %s)",
 				convToString(event.Src[:]),
 				convToString(event.Dest[:]),
 				convToString(event.Fs[:]),
@@ -116,11 +109,23 @@ func main() {
 				convToString(event.Data[:]),
 				strerrno(event.Ret))
 		} else {
-			log.Printf("UMOUNT")
+			//log.Printf("UMOUNT")
+			call_str = fmt.Sprintf("umount(%s, %s = %s)",
+				convToString(event.Dest[:]),
+				getflags(event.Flags),
+				strerrno(event.Ret))
 		}
 
 		log.Printf("%-16s %-7d %-7d %d %s\n", convToString(event.Comm[:]), event.Pid, event.Tid, event.MntNs, call_str)
-
+		
+		var value uint64
+		for i := uint32(1); i <= 4; i++ {
+			err := objs.CountMap.Lookup(i, &value)
+			if err != nil {
+				log.Fatalf("reading map: %v", err)
+			}
+			log.Printf("[%d] called [%d] times", i, value)
+		}
 	}
 }
 
