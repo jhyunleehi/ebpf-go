@@ -72,8 +72,7 @@ struct {
 	__type(value, struct event);
 } currevent SEC(".maps");
 
-static __always_inline int
-probe_create(struct dentry *dentry)
+static __always_inline int probe_create(struct dentry *dentry)
 {
 	u64 id = bpf_get_current_pid_tgid();
 	u32 tgid = id >> 32;
@@ -101,15 +100,18 @@ probe_create(struct dentry *dentry)
 SEC("kprobe/vfs_create")
 int BPF_KPROBE(vfs_create, void *arg0, void *arg1, void *arg2){
 //int  kprobe_vfs_create(struct pt_regs *ctx) {
-	if (renamedata_has_old_mnt_userns_field()
-		|| renamedata_has_new_mnt_idmap_field())
+	if (renamedata_has_old_mnt_userns_field() || renamedata_has_new_mnt_idmap_field())
 		probe_create(arg2);
 	else
 		probe_create(arg1);
+
+	int pid = bpf_get_current_pid_tgid() >> 32;
+  	const char fmt_str[] = "VFS create [%d]";
+  	bpf_trace_printk(fmt_str, sizeof(fmt_str), pid);
+
+
 	return 0;
 }
-
-
 
 
 SEC("kprobe/vfs_open")
@@ -120,6 +122,10 @@ int BPF_KPROBE(vfs_open, struct path *path, struct file *file)
 
 	if (!(fmode & FMODE_CREATED))
 		return 0;
+
+	int pid = bpf_get_current_pid_tgid() >> 32;
+  	const char fmt_str[] = "VFS open [%d]";
+  	bpf_trace_printk(fmt_str, sizeof(fmt_str), pid);
 
 	return probe_create(dentry);
 }
@@ -173,6 +179,11 @@ int BPF_KPROBE(vfs_unlink, void *arg0, void *arg1, void *arg2)
 	event.dentry = (__u64)(has_arg ? arg2 : arg1);
 
 	bpf_map_update_elem(&currevent, &tid, &event, BPF_ANY);
+
+	int pid = bpf_get_current_pid_tgid() >> 32;
+  	const char fmt_str[] = "VFS ulink [%d]";
+  	bpf_trace_printk(fmt_str, sizeof(fmt_str), pid);
+
 	return 0;
 }
 
