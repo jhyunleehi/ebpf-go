@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf/link"
-	//"github.com/cilium/ebpf/ringbuf"
+	//"github.com/cilium/ebpf/ringbuf"		
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/rlimit"
 	"golang.org/x/sys/unix"
@@ -121,16 +121,34 @@ func main() {
 		
 		log.Printf("[%s] [%d] [%s] [%d] [%s]", ts,tgid,task,delta,file)
 			   
+		info,err:=(objs.Start).Info()
+		if err !=nil {
+			fmt.Print(err)
+		}
+		log.Printf("[%+v]",info)
+		iter:=(objs.Start).Iterate()		
+		
+		var key uint64
+		var value uint64 
+		// var keys []string
+		
+		for  iter.Next(&key,&value){
+			fmt.Printf("[%+v][%+v]",key,value)
+		}
+		
+		
+
 		/*
 		var value uint64
 		for i := uint32(1); i <= 4; i++ {
-			err := objs.CountMap.Lookup(i, &value)
+			err := objs.Start.Lookup(i, &value)
 			if err != nil {
 				log.Fatalf("reading map: %v", err)
 			}
 			log.Printf("[%d] called [%d] times", i, value)
 		}
 		*/
+		
 	}
 }
 

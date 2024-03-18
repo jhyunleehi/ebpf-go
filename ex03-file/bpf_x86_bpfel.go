@@ -75,6 +75,7 @@ type bpfProgramSpecs struct {
 type bpfMapSpecs struct {
 	Currevent *ebpf.MapSpec `ebpf:"currevent"`
 	Events    *ebpf.MapSpec `ebpf:"events"`
+	Filemap   *ebpf.MapSpec `ebpf:"filemap"`
 	Start     *ebpf.MapSpec `ebpf:"start"`
 }
 
@@ -99,6 +100,7 @@ func (o *bpfObjects) Close() error {
 type bpfMaps struct {
 	Currevent *ebpf.Map `ebpf:"currevent"`
 	Events    *ebpf.Map `ebpf:"events"`
+	Filemap   *ebpf.Map `ebpf:"filemap"`
 	Start     *ebpf.Map `ebpf:"start"`
 }
 
@@ -106,6 +108,7 @@ func (m *bpfMaps) Close() error {
 	return _BpfClose(
 		m.Currevent,
 		m.Events,
+		m.Filemap,
 		m.Start,
 	)
 }

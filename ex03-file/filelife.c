@@ -48,6 +48,14 @@ const volatile pid_t targ_tgid = 0;
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 8192);
+	__type(key, u64);
+	__type(value,u64);
+} filemap SEC(".maps");
+
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 8192);
 	__type(key, struct dentry *);
 	__type(value, u64);
 } start SEC(".maps");
@@ -83,6 +91,7 @@ static __always_inline int probe_create(struct dentry *dentry)
 
 	ts = bpf_ktime_get_ns();
 	bpf_map_update_elem(&start, &dentry, &ts, 0);
+
 	return 0;
 }
 
@@ -183,6 +192,8 @@ int BPF_KPROBE(vfs_unlink, void *arg0, void *arg1, void *arg2)
 	int pid = bpf_get_current_pid_tgid() >> 32;
   	const char fmt_str[] = "VFS ulink [%d]";
   	bpf_trace_printk(fmt_str, sizeof(fmt_str), pid);
+
+	bpf_map_update_elem(&filemap, &event.dentry, &event.file, BPF_ANY);
 
 	return 0;
 }
