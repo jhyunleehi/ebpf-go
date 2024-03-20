@@ -49,6 +49,12 @@ func main() {
 	}
 	defer kp2.Close()
 
+	go func() {
+		<-stopper
+
+		log.Fatalf("closing ringbuf reader: %s", err)
+	}()
+
 	// Read loop reporting the total amount of times the kernel
 	// function was entered, once per second.
 	ticker := time.NewTicker(3 * time.Second)
@@ -63,8 +69,8 @@ func main() {
 		val := bpfFileStat{}
 		iter := objs.Entries.Iterate()
 		for iter.Next(&key, &val) {
-			log.Printf("%+v", key)
-			log.Printf("%+v", val)
+			//log.Printf("%+v", key)
+			//log.Printf("%+v", val)
 			objs.Entries.Delete(&key)
 			keys = append(keys, key)
 			vals = append(vals, val)
@@ -78,12 +84,15 @@ func main() {
 			return vals[i].ReadBytes < vals[j].ReadBytes
 		})
 
-		for k,v:=range vals{		
+		for k, v := range vals {
+			if k >10 {
+				break
+			}
 			comm := convToString(v.Comm[:])
-			filename:=convToString(v.Filename[:])
-			fmt.Printf("[%d] [%d][%d] [%s] : R[%d] W[%d] R[%d] W[%d] [%d] [%s] ",k, v.Pid, v.Tid, comm, v.Reads, v.Writes,
-			v.ReadBytes/1024, v.WriteBytes/1024, v.Type, filename)
-		}		
+			filename := convToString(v.Filename[:])
+			fmt.Printf("[%d] [%d][%d] [%s] : R[%d] W[%d] R[%d] W[%d] [%d] [%s]\n ", k, v.Pid, v.Tid, comm, v.Reads, v.Writes,
+				v.ReadBytes/1024, v.WriteBytes/1024, v.Type, filename)			
+		}
 	}
 
 }
