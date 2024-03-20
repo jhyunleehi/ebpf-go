@@ -495,3 +495,125 @@ https://libbpf.readthedocs.io/en/latest/api.html
 https://docs.kernel.org/bpf/libbpf/program_types.html
 
 
+### bpf_map_get_next_key
+
+```c
+#include <stdint.h>
+#include <stddef.h>
+#include <linux/bpf.h>
+#include <linux/in.h>
+#include <bpf/bpf_helpers.h>
+
+// Define the eBPF map
+struct bpf_map_def SEC("maps") my_map = {
+    .type = BPF_MAP_TYPE_HASH,
+    .key_size = sizeof(uint32_t),  // Assuming IPv4 addresses
+    .value_size = sizeof(uint64_t), // Assuming some value associated with each IP
+    .max_entries = 1024,
+};
+
+SEC("next_key_example")
+int next_key_example(struct __sk_buff *skb)
+{
+    uint32_t key;
+    uint64_t *value;
+
+    // Initialize iteration with an empty key
+    key = 0;
+
+    // Iterate through all keys in the map
+    while (bpf_map_get_next_key(&my_map, &key, &key) == 0) {
+        // Lookup the value associated with the current key
+        value = bpf_map_lookup_elem(&my_map, &key);
+        if (value) {
+            // Do something with the key and value
+            // For example, print them
+            bpf_printk("Key: %u, Value: %lu\n", key, *value);
+        }
+    }
+
+    return 0;
+}
+
+char _license[] SEC("license") = "GPL";
+```
+
+
+### map []char ???
+
+```c
+struct counter {
+	__u64 last_sector;
+	__u64 bytes;
+	__u32 sequential;
+	__u32 random;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 64);
+	__type(key, u32);
+	__type(value, struct counter);
+} counters SEC(".maps");
+```
+
+
+```c
+struct piddata {
+	char comm[TASK_COMM_LEN];
+	u32 pid;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, MAX_ENTRIES);
+	__type(key, struct request *);
+	__type(value, struct piddata);
+} infobyreq SEC(".maps");
+```
+
+```c
+struct event {
+	pid_t pid;
+	pid_t ppid;
+	uid_t uid;
+	int retval;
+	int args_count;
+	unsigned int args_size;
+	char comm[TASK_COMM_LEN];
+	char args[FULL_MAX_ARGS_ARR];
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 10240);
+	__type(key, pid_t);
+	__type(value, struct event);
+} execs SEC(".maps");
+```
+
+
+```c
+struct file_stat {
+	__u64 reads;
+	__u64 read_bytes;
+	__u64 writes;
+	__u64 write_bytes;
+	__u32 pid;
+	__u32 tid;
+	char filename[PATH_MAX];
+	char comm[TASK_COMM_LEN];
+	char type;
+};
+
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, MAX_ENTRIES);
+	__type(key, struct file_id);
+	__type(value, struct file_stat);
+} entries SEC(".maps");
+
+```
+
+

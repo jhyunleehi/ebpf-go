@@ -135,8 +135,7 @@ func main() {
 		for  iter.Next(&key,&value){
 			fmt.Printf("[%+v][%+v]",key,value)
 		}
-		
-		
+			
 
 		/*
 		var value uint64
