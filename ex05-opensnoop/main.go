@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"os/user"
+	"strings"
 	"syscall"
 
 	"github.com/cilium/ebpf/link"
-	"github.com/cilium/ebpf/ringbuf"
+	"github.com/cilium/ebpf/perf"
+	//"github.com/cilium/ebpf/ringbuf"
 	"github.com/cilium/ebpf/rlimit"
 	"golang.org/x/sys/unix"
 )
@@ -33,20 +37,34 @@ func main() {
 	}
 	defer objs.Close()
 
-	// Open a Kprobe at the entry point of the kernel function and attach the
-	// pre-compiled program. Each time the kernel function enters, the program
-	// will emit an event containing pid and command of the execved task.
-	kp, err := link.Tracepoint("syscalls","sys_enter_openat",objs.SyscallsSysEnterOpenat,nil)
+	
+	tp1, err := link.Tracepoint("syscalls","sys_enter_open",objs.SyscallsSysEnterOpen,nil)
 	if err != nil {
-		log.Fatalf("opening kprobe: %s", err)
+		log.Fatalf("tracepoint: %s", err)
 	}
-	defer kp.Close()
+	defer tp1.Close()
 
-	// Open a ringbuf reader from userspace RINGBUF map described in the
-	// eBPF C program.
-	rd, err := ringbuf.NewReader(objs.Events)
+	tp2, err := link.Tracepoint("syscalls","sys_enter_openat",objs.SyscallsSysEnterOpenat,nil)
 	if err != nil {
-		log.Fatalf("opening ringbuf reader: %s", err)
+		log.Fatalf("tracepoint: %s", err)
+	}
+	defer tp2.Close()
+
+	tp3, err := link.Tracepoint("syscalls","sys_exit_open",objs.SyscallsSysExitOpen,nil)
+	if err != nil {
+		log.Fatalf("tracepoint: %s", err)
+	}
+	defer tp3.Close()
+
+	tp4, err := link.Tracepoint("syscalls","sys_exit_openat",objs.SyscallsSysExitOpenat,nil)
+	if err != nil {
+		log.Fatalf("tracepoint: %s", err)
+	}
+	defer tp4.Close()
+	
+	rd, err := perf.NewReader(objs.Events,os.Getpagesize())
+	if err != nil {
+		log.Fatalf("opening perf reader: %s", err)
 	}
 	defer rd.Close()
 
@@ -67,7 +85,7 @@ func main() {
 	for {
 		record, err := rd.Read()
 		if err != nil {
-			if errors.Is(err, ringbuf.ErrClosed) {
+			if errors.Is(err, perf.ErrClosed) {
 				log.Println("Received signal, exiting..")
 				return
 			}
@@ -81,6 +99,40 @@ func main() {
 			continue
 		}
 
-		log.Printf("pid: %d\tcomm: %s\n", event.Pid, unix.ByteSliceToString(event.Comm[:]))
+		ts:=event.Ts
+		pid:=event.Pid
+		uid:=event.Uid
+		username, _ := user.LookupId(fmt.Sprint(uid))
+		ret:=event.Ret
+		flag:=event.Flags
+		
+		comm:=convToString(event.Comm[:])
+		fname:=convToString(event.Fname[:])
+
+		log.Printf("[%d][%d][%d][%s][%d][%d][%s][%s]",ts,pid,uid,username.Username,ret,flag,comm,fname)
 	}
+}
+
+
+
+func convToString(param interface{}) string {
+	switch v := param.(type) {
+	case int:
+		fmt.Println("type:", v)
+	case string:
+		fmt.Println("type:", v)
+		return param.(string)
+	case []int8:
+		ival := param.([]int8)
+		dbytes := make([]byte, len(ival))
+		for i, v := range ival {
+			dbytes[i] = byte(v)
+		}
+		//str:=string(dbytes) //not handle null character
+		str := unix.ByteSliceToString(dbytes)
+		return strings.Trim(str, " ")
+	default:
+		fmt.Println("type:", v)
+	}
+	return ""
 }

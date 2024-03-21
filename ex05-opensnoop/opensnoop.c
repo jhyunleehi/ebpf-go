@@ -11,7 +11,7 @@
 #define INVALID_UID ((uid_t)-1)
 
 struct args_t {
-	const char *fname;
+	 __u64 fname;
 	int flags;
 };
 
@@ -81,7 +81,7 @@ int syscalls_sys_enter_open(struct trace_event_raw_sys_enter* ctx)
 	/* store arg info for later lookup */
 	if (trace_allowed(tgid, pid)) {
 		struct args_t args = {};
-		args.fname = (const char *)ctx->args[0];
+		args.fname = (__u64)ctx->args[0];
 		args.flags = (int)ctx->args[1];
 		bpf_map_update_elem(&start, &pid, &args, 0);
 	}
@@ -99,7 +99,7 @@ int syscalls_sys_enter_openat(struct trace_event_raw_sys_enter* ctx)
 	/* store arg info for later lookup */
 	if (trace_allowed(tgid, pid)) {
 		struct args_t args = {};
-		args.fname = (const char *)ctx->args[1];
+		args.fname = (__u64)ctx->args[1];
 		args.flags = (int)ctx->args[2];
 		bpf_map_update_elem(&start, &pid, &args, 0);
 	}
@@ -126,7 +126,7 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 	event.pid = bpf_get_current_pid_tgid() >> 32;
 	event.uid = bpf_get_current_uid_gid();
 	bpf_get_current_comm(&event.comm, sizeof(event.comm));
-	bpf_probe_read_user_str(&event.fname, sizeof(event.fname), ap->fname);
+	bpf_probe_read_user_str(&event.fname, sizeof(event.fname), (void*)ap->fname);
 	event.flags = ap->flags;
 	event.ret = ret;
 
@@ -137,8 +137,7 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 	event.callers[1] = stack[2];
 
 	/* emit event */
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
-			      &event, sizeof(event));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
 cleanup:
 	bpf_map_delete_elem(&start, &pid);
