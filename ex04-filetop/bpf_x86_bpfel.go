@@ -28,6 +28,7 @@ type bpfFileStat struct {
 	Pid        uint32
 	Tid        uint32
 	Filename   [4096]int8
+	Path       [4096]int8
 	Comm       [16]int8
 	Type       int8
 	_          [7]byte

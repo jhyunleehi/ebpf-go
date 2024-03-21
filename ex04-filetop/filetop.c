@@ -34,6 +34,7 @@ struct file_stat {
 	__u32 pid;
 	__u32 tid;
 	char filename[PATH_MAX];
+	char path[PATH_MAX];
 	char comm[TASK_COMM_LEN];
 	char type;
 };
@@ -50,12 +51,27 @@ struct {
 	__type(value, struct file_stat);
 } entries SEC(".maps");
 
-static void get_file_path(struct file *file, char *buf, size_t size)
+static void get_file_name(struct file *file, char *buf, size_t size)
 {
 	struct qstr dname;
 
 	dname = BPF_CORE_READ(file, f_path.dentry, d_name);
 	bpf_probe_read_kernel(buf, size, dname.name);
+}
+
+static int get_file_path(struct file *file, char *buf, size_t size)
+{	
+	bpf_printk("DEBUG: ----1----> get_file_path [%s]", buf);
+	unsigned char * filename;
+	filename = BPF_CORE_READ(file, f_path.dentry,d_iname);
+	int ret = bpf_probe_read_kernel(buf, sizeof(buf), filename);
+    if (ret < 0) {
+		bpf_printk("DEBUG: ----2----> get_file_path [%s]", buf);
+		return 0;	
+	}  	
+	
+	bpf_printk("DEBUG: =>>3>>>>get_file_path [%s]", buf);
+	return 0;
 }
 
 static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count, enum op op)
@@ -80,6 +96,7 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count, enu
 	key.pid = pid;
 	key.tid = tid;
 	valuep = bpf_map_lookup_elem(&entries, &key);
+		
 	if (!valuep) {
 		bpf_map_update_elem(&entries, &key, &zero_value, BPF_ANY);
 		valuep = bpf_map_lookup_elem(&entries, &key);
@@ -88,7 +105,8 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count, enu
 		valuep->pid = pid;
 		valuep->tid = tid;
 		bpf_get_current_comm(&valuep->comm, sizeof(valuep->comm));
-		get_file_path(file, valuep->filename, sizeof(valuep->filename));
+		get_file_name(file, valuep->filename, sizeof(valuep->filename));		
+		
 		if (S_ISREG(mode)) {
 			valuep->type = 'R';
 		} else if (S_ISSOCK(mode)) {
@@ -104,8 +122,13 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count, enu
 		valuep->writes++;
 		valuep->write_bytes += count;
 	}
+
+	get_file_path(file, valuep->path, sizeof(valuep->path));
+	
 	return 0;
 };
+
+//static char gpath[PATH_MAX];
 
 SEC("kprobe/vfs_read")
 int BPF_KPROBE(vfs_read_entry, struct file *file, char *buf, size_t count, loff_t *pos)
@@ -116,7 +139,10 @@ int BPF_KPROBE(vfs_read_entry, struct file *file, char *buf, size_t count, loff_
   	const char fmt_str[] = "DEBUG: kprobe/vfs_read [%d]";
   	bpf_trace_printk(fmt_str, sizeof(fmt_str), pid);
 
-
+	
+	// get_file_path(file, gpath, sizeof(gpath));
+	// bpf_printk("DEBUG: ----1----> path [%s]", gpath);
+	
 	return probe_entry(ctx, file, count, READ);
 }
 
