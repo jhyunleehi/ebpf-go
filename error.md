@@ -11,7 +11,7 @@ $(TARGET): $(USER_SKEL)
 	go build  
 ```
 
-```
+```sh
 root@Good:~/go/src/ebpf-go/step09# make
 clang \
     -target bpf \
@@ -74,7 +74,7 @@ root@Good:~/go/src/ebpf-go/step09#
 ```
 
 #### fix it 
-* only support -rageget amd64 
+* only support -target amd64 
 ```Makefile 
 $(TARGET): $(USER_SKEL) 
 	echo  go build...	
@@ -263,4 +263,71 @@ static long (*bpf_trace_printk)(const char *fmt, __u32 fmt_size, ...) = (void *)
 root@Good:~/go/src/ebpf-go/ex02-mount# sudo  ./ex02-mount 
 2024/03/15 00:14:55 loading objects: field UmountExit: program umount_exit: load program: invalid argument: Unreleased reference id=5 alloc_insn=25 (162 line(s) omitted)
 root@Good:~/go/src/ebpf-go/ex02-mount# 
+```
+
+
+## collect C types: type name event: not found
+
+```sh
+root@Good:~/go/src/ebpf-go/ex05-opensnoop# make
+bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
+clang \
+    -target bpf \
+        -D __TARGET_ARCH_x86 \
+    -Wall \
+    -O2 -g -o opensnoop.o -c opensnoop.c
+llvm-strip -g opensnoop.o
+bpftool gen skeleton opensnoop.o > opensnoop.skel.h
+echo  go build...
+go build...
+go get github.com/cilium/ebpf/cmd/bpf2go
+# go run github.com/cilium/ebpf/cmd/bpf2go  -target amd64  bpf opensnoop.c -- -I../headers
+go run github.com/cilium/ebpf/cmd/bpf2go -type event bpf opensnoop.c -- -I../headers
+Compiled /root/go/src/ebpf-go/ex05-opensnoop/bpf_bpfel.o
+Stripped /root/go/src/ebpf-go/ex05-opensnoop/bpf_bpfel.o
+Error: collect C types: type name event: not found
+exit status 1
+make: *** [Makefile:17: opensnoop] 오류 1
+root@Good:~/go/src/ebpf-go/ex05-opensnoop# 
+```
+
+### fix 
+* add it in pbf.c file
+```c
+const struct event *unused __attribute__((unused));
+```
+
+
+
+
+## type *btf.Pointer: not supported
+
+```sh
+root@Good:~/go/src/ebpf-go/ex05-opensnoop# make
+clang \
+    -target bpf \
+        -D __TARGET_ARCH_x86 \
+    -Wall \
+    -O2 -g -o opensnoop.o -c opensnoop.c
+llvm-strip -g opensnoop.o
+bpftool gen skeleton opensnoop.o > opensnoop.skel.h
+echo  go build...
+go build...
+go get github.com/cilium/ebpf/cmd/bpf2go
+# go run github.com/cilium/ebpf/cmd/bpf2go  -target amd64  bpf opensnoop.c -- -I../headers
+go run github.com/cilium/ebpf/cmd/bpf2go -type event bpf opensnoop.c -- -I../headers
+Compiled /root/go/src/ebpf-go/ex05-opensnoop/bpf_bpfeb.o
+Stripped /root/go/src/ebpf-go/ex05-opensnoop/bpf_bpfeb.o
+Error: can't write /root/go/src/ebpf-go/ex05-opensnoop/bpf_bpfeb.go: can't generate types: template: common:17:4: executing "common" at <$.TypeDeclaration>: error calling TypeDeclaration: Struct:"args_t": field 0: type *btf.Pointer: not supported
+exit status 1
+make: *** [Makefile:17: opensnoop] 오류 1
+```
+
+### fix 
+* not support  *btf.Pointeer 
+```c
+struct args_t {
+	const char *fname;
+	int flags;
+};
 ```
