@@ -10,7 +10,7 @@ $(TARGET): $(USER_SKEL)
 	go generate
 	go build  
 ```
-
+* error message 
 ```
 root@Good:~/go/src/ebpf-go/step09# make
 clang \
