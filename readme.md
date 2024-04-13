@@ -24,6 +24,103 @@ root@Good:~/go/src/ebpf# cat code.sh
 sudo code --no-sandbox --user-data-dir=/root/.config/vscode_data
 ```
 
+### vscode debug as root
+https://github.com/golang/vscode-go/blob/master/docs/debugging.md#debugging-programs-and-tests-as-root
+
+#### 1. Debug a program as root
+* task.json
+```json
+{
+    ...
+    "tasks": [
+        {
+            "label": "go: build (debug)",
+            "type": "shell",
+            "command": "go",
+            "args": [
+                "build",
+                "-gcflags=all=-N -l",
+                "-o",
+                "${fileDirname}/__debug_bin"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            ...
+        }
+    ]
+}
+```
+* launcher.json
+```json
+    ...
+    "configurations": [
+        {
+            "name": "Launch Package as root",
+            "type": "go",
+            "request": "launch",
+            "mode": "exec",
+            "asRoot": true,
+            "console": "integratedTerminal",
+            "program": "${fileDirname}/__debug_bin",
+            "preLaunchTask": "go: build (debug)",
+        }
+    ]
+```
+
+
+#### 2. Debug a package test as root
+
+* task.json
+```json
+    ...
+    "tasks": [
+        {
+            ...
+        },
+        {
+            "label": "go test (debug)",
+            "type": "shell",
+            "command": "go",
+            "args": [
+                "test",
+                "-c",
+                "-o",
+                "${fileDirname}/__debug_bin"
+            ],
+            "options": {
+                "cwd": "${fileDirname}",
+            },
+            ...
+        }
+    ]
+```
+
+* launch.json
+```json
+    ...
+    "configurations": [
+        {
+            ...
+        },
+        {
+            "name": "Debug Package Test as root",
+            "type": "go",
+            "request": "launch",
+            "mode": "exec",
+            "asRoot": true,
+            "program": "${fileDirname}/__debug_bin",
+            "cwd": "${fileDirname}",
+            "console": "integratedTerminal",
+            "preLaunchTask": "go test (debug)"
+        }
+    ]
+```
+
+
+
+
+
 ### cross compile 
 bpf2go가 두 개의 파일 세트
 *_bpfel.o*_bpfel.goamd64, arm64, riscv64 및 loong64와 같은 리틀 엔디안 아키텍처의 경우
