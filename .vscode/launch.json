@@ -5,21 +5,26 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Package",
+            "name": "Debug Package Test as root",
             "type": "go",
             "request": "launch",
-            "mode": "auto",
-            "program": "${fileDirname}"
+            "mode": "exec",
+            "asRoot": true,
+            "program": "${fileDirname}/__debug_bin",
+            "cwd": "${fileDirname}",
+            "console": "integratedTerminal",
+            "preLaunchTask": "go test (debug)"
         },
-        
         {
-            "name": "Launch file",
+            "name": "Launch Package as root",
             "type": "go",
-            "request": "launch",            
-            "mode": "debug",
-            "program": "${file}"
+            "request": "launch",
+            "mode": "exec",
+            "asRoot": true,
+            "console": "integratedTerminal",
+            "program": "${fileDirname}/__debug_bin",
+            "preLaunchTask": "go: build (debug)",
         },
-
         {
             "name": "(gdb) Launch",
             "type": "cppdbg",
@@ -86,8 +91,8 @@
             "program": "${file}",
             "python": "python3",
             "sudo": true,
-            "justMyCode": false,            
-            "console": "integratedTerminal",            
+            "justMyCode": false,
+            "console": "integratedTerminal",
             "args": [
                 "-v",
                 "-s",

@@ -52,9 +52,8 @@ https://github.com/golang/vscode-go/blob/master/docs/debugging.md#debugging-prog
 }
 ```
 * launcher.json
-```json
-    ...
-    "configurations": [
+```json    
+    
         {
             "name": "Launch Package as root",
             "type": "go",
@@ -65,7 +64,7 @@ https://github.com/golang/vscode-go/blob/master/docs/debugging.md#debugging-prog
             "program": "${fileDirname}/__debug_bin",
             "preLaunchTask": "go: build (debug)",
         }
-    ]
+    
 ```
 
 
@@ -75,9 +74,6 @@ https://github.com/golang/vscode-go/blob/master/docs/debugging.md#debugging-prog
 ```json
     ...
     "tasks": [
-        {
-            ...
-        },
         {
             "label": "go test (debug)",
             "type": "shell",
@@ -99,10 +95,7 @@ https://github.com/golang/vscode-go/blob/master/docs/debugging.md#debugging-prog
 * launch.json
 ```json
     ...
-    "configurations": [
-        {
-            ...
-        },
+    "configurations": [        
         {
             "name": "Debug Package Test as root",
             "type": "go",
