@@ -533,9 +533,18 @@ cp  /sys/kernel/debug/tracing/trace ftrace.log
 
 
 
-
-
 ## 4. trace-cmd
+* 맛보기
+```sh
+$ sudo trace-cmd record -p function ./hello
+$ sudo trace-cmd record -p funtion  -P 1234
+$ sudo trace-cmd report
+```
+==> 이것의 출력은 perf 출력이 아니다
+
+
+
+
 
 ### perf와 trace-cmd의 차이점 
 ### perf:
