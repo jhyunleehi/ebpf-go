@@ -1,6 +1,7 @@
 # Tracing and Visualizing
 
 1. perf
+2. uftrace
 2. /proc 
 2. chrom://tracing 
 3. perfetto 
@@ -102,6 +103,7 @@ $ sudo perf stat -e instructions  ./hello
 $ sudo perf record  -g -- ./hello
 $ perf report --stdio --sort comm,dso,symbol --tui
 ```
+
 * event 지정 
 ```sh 
 $ sudo perf record  -e cpu-clock -g -- ./hello
@@ -130,11 +132,11 @@ $ perf report --stdio --sort comm,dso,symbol --tui
 $ git clone https://github.com/brendangregg/Flamegraph.git
 $ sudo perf script | ../Flamegraph/stackcollapse-perf.pl | ../Flamegraph/flamegraph.pl > graph.svg
 ```
+
 * 흥미로운 결과가 나온다. 
 ```sh
 $ sudo perf record  -ag -- sleep 10
 $ sudo perf script | ../Flamegraph/stackcollapse-perf.pl | ../Flamegraph/flamegraph.pl > graph.svg
-`
 ```
 
 * hello flame graph
@@ -143,9 +145,103 @@ $ sudo perf record  -g -- ./hello
 $ sudo perf script | ../Flamegraph/stackcollapse-perf.pl | ../Flamegraph/flamegraph.pl > graph.svg
 ```
 
+## 2. uftrace 
+
+[https://github.com/namhyung/uftrace](https://github.com/namhyung/uftrace)
+
+hese are the commands supported by uftrace:
+
+* record : runs a program and saves the trace data
+* replay : shows program execution in the trace data
+* report : shows performance statistics in the trace data
+* live : does record and replay in a row (default)
+* info : shows system and program info in the trace data
+* dump : shows low-level trace data
+* recv : saves the trace data from network
+* graph : shows function call graph in the trace data
+* script : runs a script for recorded trace data
+* tui : show text user interface for graph and report
+
+### 1. make hello 
+
+```sh 
+$ gcc -g -pg  -o hello hello.c
+
+$ ldd  ./hello
+$ file ./hello
+$ stat ./hello
+$ readelf  -l hello
+$ objdump -d hello
+$ xxd ./hello | header 
+
+$ gdb  ./hello
+(gdb) list
+(gdb) break 5
+(gdb) run
+(gdb) info frame
+(gdb) info files
+(gdb) info local
+(gdb) info proc
+(gdb) info break
+(gdb) print VAL
+(gdb) display i
+(gdb) disas main
+```
+
+### 2. trace kernel 
+* kernel 함수 추적
+```sh 
+$ uftrace ./hello
+$ sudo uftrace ./hello 
+
+$ sudo uftrace -k 5 ./hello
+```
+
+* 기록
+```sh
+$ sudo uftrace record -K 5 ./hello
+$ du -sk  uftrace.data/
+18284	uftrace.data/
+
+$ sudo uftrace report 
+$ sudo uftrace replay
+$ sudo uftrace tui
+```
+
+### 3. flame graph
+```sh
+$ uftrace dump --chrome > chrome.data
+$ uftrace dump --flame-graph > flame.data
+```
+* ui.perfetto.dev 에서 chrome.data 읽기
+
+
+* svg graph 생성 
+```sh
+ $ uftrace dump --flame-graph |../Flamegraph/flamegraph.pl > flame.svg
+ ```
 
 
 
+
+
+
+
+
+
+
+
+
+### 2. make chrome dump
+```
+
+### 2. make flamegraph
+
+
+
+
+
+## trace-cmd
 
 ### perf와 trace-cmd의 차이점 
 ### perf:
@@ -166,12 +262,7 @@ $ sudo perf script | ../Flamegraph/stackcollapse-perf.pl | ../Flamegraph/flamegr
 
 
 
-
-
-
-
-
-
+## perfetto
 
 ### Quickstart: Record traces on Linux
 https://perfetto.dev/docs/quickstart/linux-tracing?_gl=1*15ruz9r*_ga*MTQ3NjY1ODc1NS4xNzEzMDE5NzY0*_ga_BD89KT2P3C*MTcxMzA4OTIwMC4yLjEuMTcxMzA5MTE2NS4wLjAuMA..
