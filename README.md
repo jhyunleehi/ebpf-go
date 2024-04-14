@@ -71,7 +71,7 @@ $ struss ./hello
 
 ### perf command 
 
-### 1. cpu event 분석
+#### 1. cpu event 분석
 CPU의 instruction retired 이벤트를 추적하여 프로그램의 명령어 실행 수를 확인할 수 있습니다.
 
 ```sh
@@ -89,7 +89,7 @@ $ sudo perf stat -e instructions  ./hello
 ```
 
 
-### 2. Profiling 
+#### 2. Profiling 
 프로그램 실행 시간을 추적하여 코드에서 시간이 가장 많이 소비되는 함수를 확인할 수 있습니다.
 * -p : process 정보 지정
 * -a : 모든 process 정보
@@ -116,7 +116,7 @@ c key
 ```
 
 
-### 3. 히트맵 출력:
+#### 3. 히트맵 출력:
 프로그램 실행 중에 perf를 사용하여 동적으로 히트맵을 출력합니다.
 
 ```sh
@@ -126,7 +126,7 @@ $ perf report --stdio --sort comm,dso,symbol --tui
 결론 ==> 이것은 분석하기 너무 힘들다.
 
 
-### 4. Flame Graph 
+#### 4. Flame Graph 
 * 설치 방법 
 ```sh
 $ git clone https://github.com/brendangregg/Flamegraph.git
@@ -144,6 +144,52 @@ $ sudo perf script | ../Flamegraph/stackcollapse-perf.pl | ../Flamegraph/flamegr
 $ sudo perf record  -g -- ./hello
 $ sudo perf script | ../Flamegraph/stackcollapse-perf.pl | ../Flamegraph/flamegraph.pl > graph.svg
 ```
+
+
+### Linux Perf profiler UI
+#### 1. perf report 
+```sh
+$ perf report
+$ perf report --stdio 
+$ perf report --stdio --sort comm,dso,symbol --tui
+```
+#### 2. firefox profiler 
+```sh
+$ perf script -F +pid > perf_fox.perf
+```
+
+1. firefox open
+2. open url https://profiler.firefox.com/
+3. $ perf script -F +pid > /tmp/test.perf
+
+
+#### 3. flame Graph 
+* perf data가 있는 디렉토리에서 실행합니다. 
+```sh
+$ git clone https://github.com/brendangregg/Flamegraph.git
+$ perf script | ./stackcollapse-perf.pl | ./flamegraph.pl > flame.html
+```
+
+
+
+
+
+#### 4. perfetto
+* An amazing tracer
+* I use it all the time for Android and Chrome tracing
+* But doesn’t yet support reading perf.data files
+
+#### 4. pprof: Graphviz UI
+
+* pprof can use Graphviz to render directed graphs of the callstacks, showing more frequent stack frames in bigger font.
+
+
+
+```sh
+
+$ go tool objdump ./hello
+```
+
 
 ## 2. uftrace 
 
@@ -218,7 +264,7 @@ $ uftrace dump --flame-graph > flame.data
 
 * svg graph 생성 
 ```sh
- $ uftrace dump --flame-graph |../Flamegraph/flamegraph.pl > flame.svg
+ $ uftrace dump --flame-graph |../Flamegraph/flamegraph.pl > f.svg
  ```
 
 
