@@ -13,12 +13,10 @@ perf와 ftrace는 모두 리눅스 커널에서 성능 분석 및 추적을 위�
 * ftrace: 주로 커널 내에서 발생하는 이벤트를 추적하며, 커널 함수 호출, 인터럽트, 스케줄링 이벤트 등을 추적할 수 있습니다. 이는 커널 내부의 동작을 이해하거나 디버깅할 때 유용합니다.
 
 ### 3. 사용 방법:
-
 * perf: perf 명령을 사용하여 성능 측정 및 프로파일링을 수행할 수 있습니다. 사용자 공간에서 실행되는 프로세스의 프로파일링, CPU 이벤트의 추적, 각종 리눅스 시스템 리소스 모니터링에 사용됩니다.
 * ftrace: trace-cmd 명령을 사용하여 ftrace를 활성화하고 이벤트를 추적합니다. 커널 내부의 이벤트를 추적하기 때문에 일반적으로 시스템 관리자나 커널 개발자들이 사용합니다.
 
 ### 4. 정확성 및 오버헤드:
-
 * perf: 성능 측정을 위한 높은 정확성을 제공하지만, 이를 위해 상당한 시스템 리소스를 소모합니다.
 * ftrace: 커널 내부에서 동작하기 때문에 일반적으로 perf보다 더 낮은 오버헤드를 가집니다. 그러나 정확성 측면에서는 일부 제약이 있을 수 있습니다.
 
@@ -172,40 +170,6 @@ echo 1 > /sys/kernel/debug/tracing/options/func_stack_trace
 echo 1 > /sys/kernel/debug/tracing/options/sym-offset
 echo 1 > /sys/kernel/debug/tracing/tracing_on
 ```
-
-#### 2. kernel함수 trace (file open,read,write,close)
-```sh
-#!/bin/bash
-echo 0 > /sys/kernel/debug/tracing/tracing_on
-echo 0 > /sys/kernel/debug/tracing/events/enable
-echo function > /sys/kernel/debug/tracing/current_tracer
-echo do_sys_openat2  > /sys/kernel/debug/tracing/set_ftrace_filter
-echo ksys_read   >> /sys/kernel/debug/tracing/set_ftrace_filter
-echo ksys_write  >> /sys/kernel/debug/tracing/set_ftrace_filter
-echo close_fd  >> /sys/kernel/debug/tracing/set_ftrace_filter
-echo 1 > /sys/kernel/debug/tracing/options/func_stack_trace
-echo 1 > /sys/kernel/debug/tracing/options/sym-offset
-echo 1 > /sys/kernel/debug/tracing/tracing_on
-```
-```sh
-#!/bin/bash
-echo 0 > /sys/kernel/debug/tracing/tracing_on
-echo 0 > /sys/kernel/debug/tracing/events/enable
-echo 0 > /sys/kernel/debug/tracing/options/stacktrace
-cp  /sys/kernel/debug/tracing/trace ftrace.log
-```
-
-#### 3. set_ftrace_filter 설정
-* set_ftrace_filter 파일에 트레이싱하고 싶은 함수를 지정하면 된다.
-* 위의 tracer 설정의 function 혹은 function_graph으로 설정한 경우 작동하는 파일이다.
-* 리눅스 커널에 존재하는 모든 함수를 필터로 지정할 수는 없다.
-* /sys/kernel/debug/tracing/available_filter_functions 파일에 포함된 함수만 지정할 수 있다.
-* 함수를 지정하지 않은 경우 모든 함수를 트레이싱하게 되어 락업이 상태에 빠지게 된다.
-* available_filter_functions 파일에 없는 함수를 지정하려도 락업 상태가 될 수 있으니 주의하자.
-* set_ftrace_filter에 아무것도 설정하지 않고 ftrace를 키면, ftrace는 모든 커널 함수에 대하여 트레이싱을 한다.
-* 모든 커널 함수에 의해 트레이스가 발생되면, 그 오버헤드가 엄청나 시스템은 락업 상태에 빠진다.
-* 그러므로 부팅 이후 절대 불리지 않을 함수secondary_start_kernel2를 트레이스 포인트로 찍어준다.
-
 
 #### trace-cmd
 * interacts with ftrace linuc kernel internal tracer
