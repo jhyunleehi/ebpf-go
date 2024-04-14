@@ -5,3 +5,6 @@ __debug*
 */*.o
 */run*
 */*.log
+*/perf.data*
+*/*/perf.data*
+*/*/*/perf.data*
