@@ -1,20 +1,40 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"log"
 	"os"
-	"os/signal"	
+	"os/signal"
 	"strings"
 	"syscall"
 	"time"
 
+	"ebpf-go/utils"
+
 	"github.com/cilium/ebpf/link"
+
 	// "github.com/cilium/ebpf/perf"
 	// "github.com/cilium/ebpf/ringbuf"
 	"github.com/cilium/ebpf/rlimit"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
+
+var diskmap map[int]map[int]string
+
+func init() {
+	log.SetLevel(log.DebugLevel)
+	log.SetReportCaller(true)
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp: true,
+	})
+	file, err := os.OpenFile("logfile.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		log.SetOutput(file)
+		defer file.Close()
+	}
+	log.SetOutput(os.Stdout)
+}
 
 func main() {
 
@@ -54,7 +74,7 @@ func main() {
 		log.Fatalf("opening kprobe: %s", err)
 	}
 	defer kp3.Close()
-	
+
 	link1, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.bpfPrograms.BlockIoDone,
 	})
@@ -70,6 +90,25 @@ func main() {
 		log.Fatal(err)
 	}
 	defer link2.Close()
+	
+	
+	err = parseDiskStat()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	l1,l5,l15,err := parseLoadAvg()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Debugf("[%f][%f][%f]",l1,l5,l15)
+
+	out, err := utils.ExecCommandWithTimeout("cat", 5, "/proc/diskstats")
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	log.Debugf("[%s]", out)
 
 	go func() {
 		<-stopper
@@ -91,28 +130,112 @@ func main() {
 		val := bpfValT{}
 		iter := objs.Counts.Iterate()
 		for iter.Next(&key, &val) {
-			//log.Printf("%+v", key)
-			//log.Printf("%+v", val)
+			log.Debugf("%+v", key)
+			log.Debugf("%+v", val)
 			objs.Counts.Delete(&key)
 			keys = append(keys, key)
 			vals = append(vals, val)
 		}
 
-		for k, v := range vals {
-			if k > 10 {
-				break
+		for k,info:= range keys {
+			v:=vals[k]
+			
+			var rw,diskname string 
+			var avgms float32
+			major:=info.Major
+			minor:=info.Minor
+			pid:=info.Pid
+			name:=convToString(info.Name)
+			if info.Rwflag==0 {
+				rw="W"
+			}else{
+				rw="R"
 			}
-			fmt.Printf("[%d]\n",v.Bytes)
-			// comm := convToString(v.Comm[:])
-			// filename := convToString(v.Filename[:])
-			// fmt.Printf("[%d] [%d][%d] [%s] : R[%d] W[%d] R[%d] W[%d] [%d] [%s]\n ", k, v.Pid, v.Tid, comm, v.Reads, v.Writes,
-			// 	v.ReadBytes/1024, v.WriteBytes/1024, v.Type, filename)
+			diskname,exist:= diskmap[int(major)][int(minor)]
+			if !exist {
+				diskname="no disk name"
+			}
+			io:=val.Io
+			bytes:=val.Bytes/1024
+			if val.Io !=0 {
+				avgms= float32(v.Us)/ float32(1000) /float32(v.Io)
+				log.Debugf("[%f]",avgms)
+			}			
+			fmt.Printf("%-7d %-16s %1s %-3d %-3d %-8s %5d %7d %6.2f\n",
+			pid,name,rw,major,minor,diskname,io,bytes,avgms);
 		}
 	}
 
 }
 
+func parseDiskStat() error {
+	diskmap=make(map[int]map[int]string)
+	file, err := os.Open("/proc/diskstats")
+	if err != nil {
+		log.Error("Error opening file:", err)
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+
+		// Parse major and minor numbers
+		var major, minor int
+		var name string
+		fmt.Sscanf(fields[0], "%d", &major)
+		fmt.Sscanf(fields[1], "%d", &minor)
+		fmt.Sscanf(fields[2], "%s", &name)
+
+		if _, exists := diskmap[major]; !exists {
+			diskmap[major] = make(map[int]string)
+		}
+		diskmap[major][minor] = name
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Error("Error reading file:", err)
+		return err
+	}
+	return nil
+}
+
+func parseLoadAvg() (l1, l5, l15 float32, err error) {	
+	file, err := os.Open("/proc/loadavg")
+	if err != nil {
+		log.Error("Error opening file:", err)
+		return 0.0, 0.0, 0.0, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+
+		fmt.Sscanf(fields[0], "%f", &l1)
+		fmt.Sscanf(fields[1], "%f", &l5)
+		fmt.Sscanf(fields[2], "%f", &l15)
+	}
+	if err := scanner.Err(); err != nil {
+		log.Error("Error reading file:", err)
+		return 0.0, 0.0, 0.0, err
+	}
+	return l1, l5, l15, nil
+}
+
 func convToString(param interface{}) string {
+	log.Debugf("[%+v]",param )	
 	switch v := param.(type) {
 	case int:
 		fmt.Println("type:", v)
@@ -124,8 +247,15 @@ func convToString(param interface{}) string {
 		dbytes := make([]byte, len(ival))
 		for i, v := range ival {
 			dbytes[i] = byte(v)
-		}
-		//str:=string(dbytes) //not handle null character
+		}		
+		str := unix.ByteSliceToString(dbytes)
+		return strings.Trim(str, " ")
+	case [8]int8:
+		ival := param.([]int8)
+		dbytes := make([]byte, len(ival))
+		for i, v := range ival {
+			dbytes[i] = byte(v)
+		}		
 		str := unix.ByteSliceToString(dbytes)
 		return strings.Trim(str, " ")
 	default:
