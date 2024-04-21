@@ -130,8 +130,8 @@ func main() {
 		val := bpfValT{}
 		iter := objs.Counts.Iterate()
 		for iter.Next(&key, &val) {
-			log.Debugf("%+v", key)
-			log.Debugf("%+v", val)
+			//log.Debugf("%+v", key)
+			//log.Debugf("%+v", val)
 			objs.Counts.Delete(&key)
 			keys = append(keys, key)
 			vals = append(vals, val)
