@@ -17,7 +17,7 @@ type bpfInfoT struct {
 	Rwflag int32
 	Major  int32
 	Minor  int32
-	Name   [8]int8
+	Name   [16]int8
 }
 
 type bpfStartReqT struct {

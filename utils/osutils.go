@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"context"
-	"errors"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -18,7 +17,7 @@ type execCommandResult struct {
 }
 
 // execCommand invokes an external shell command
-func execCommandWithTimeout(name string, timeoutSeconds time.Duration, args ...string) ([]byte, error) {
+func ExecCommandWithTimeout(name string, timeoutSeconds time.Duration, args ...string) (string, error) {
 	log.Debugf("[%s][%d][%v]", name, timeoutSeconds, args)
 	timeout := timeoutSeconds * time.Second
 
@@ -35,17 +34,20 @@ func execCommandWithTimeout(name string, timeoutSeconds time.Duration, args ...s
 	case <-time.After(timeout):
 		if err := cmd.Process.Kill(); err != nil {
 			log.Errorf("failed to kill process [%v]", err)
-			result = execCommandResult{Output: nil, Error: err}
+			return "", err
 		} else {
 			log.Error("process killed after timeout")
-			result = execCommandResult{Output: nil, Error: errors.New("process killed after timeout")}
+			return "", err
 		}
 	case result = <-done:
 		break
 	}
 	str := sanitizeString(string(result.Output))
-	log.Debugf("command[%s] output [%s] error [%s]", name, str, result.Error)
-	return result.Output, result.Error
+	if result.Error != nil {
+		log.Errorf("command[%s] output [%s] error [%s]", name, str, result.Error)
+		return string(result.Output), result.Error
+	}
+	return string(result.Output), nil
 }
 
 var xtermControlRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -57,7 +59,7 @@ func sanitizeString(s string) string {
 	return s
 }
 
-func execCommandTimeout(cmd string, timeoutSeconds time.Duration, args ...string) (string, error) {
+func ExecCommandTimeout(cmd string, timeoutSeconds time.Duration, args ...string) (string, error) {
 	log.Debugf("[%s][%d][%v]", cmd, timeoutSeconds, args)
 
 	// Set up the context with a timeout
@@ -65,7 +67,7 @@ func execCommandTimeout(cmd string, timeoutSeconds time.Duration, args ...string
 	defer cancel()
 
 	// Create the command
-	command := exec.CommandContext(ctx, cmd)
+	command := exec.CommandContext(ctx, cmd, args...)
 
 	// Capture output
 	var output bytes.Buffer

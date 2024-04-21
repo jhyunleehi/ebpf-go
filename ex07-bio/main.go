@@ -145,7 +145,7 @@ func main() {
 			major:=info.Major
 			minor:=info.Minor
 			pid:=info.Pid
-			name:=convToString(info.Name)
+			name:=convToString(info.Name[:])
 			if info.Rwflag==0 {
 				rw="W"
 			}else{
@@ -159,7 +159,6 @@ func main() {
 			bytes:=val.Bytes/1024
 			if val.Io !=0 {
 				avgms= float32(v.Us)/ float32(1000) /float32(v.Io)
-				log.Debugf("[%f]",avgms)
 			}			
 			fmt.Printf("%-7d %-16s %1s %-3d %-3d %-8s %5d %7d %6.2f\n",
 			pid,name,rw,major,minor,diskname,io,bytes,avgms);
@@ -235,7 +234,6 @@ func parseLoadAvg() (l1, l5, l15 float32, err error) {
 }
 
 func convToString(param interface{}) string {
-	log.Debugf("[%+v]",param )	
 	switch v := param.(type) {
 	case int:
 		fmt.Println("type:", v)
@@ -249,15 +247,7 @@ func convToString(param interface{}) string {
 			dbytes[i] = byte(v)
 		}		
 		str := unix.ByteSliceToString(dbytes)
-		return strings.Trim(str, " ")
-	case [8]int8:
-		ival := param.([]int8)
-		dbytes := make([]byte, len(ival))
-		for i, v := range ival {
-			dbytes[i] = byte(v)
-		}		
-		str := unix.ByteSliceToString(dbytes)
-		return strings.Trim(str, " ")
+		return strings.Trim(str, " ")	
 	default:
 		fmt.Println("type:", v)
 	}
