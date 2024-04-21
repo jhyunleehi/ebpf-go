@@ -2,14 +2,17 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
-	"ebpf-go/utils"
+	"ebpf-go/utils/command"
+	"ebpf-go/utils/resty"
 
 	"github.com/cilium/ebpf/link"
 
@@ -20,7 +23,22 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+type blkdevice struct {
+	//lsblk --help
+	path      string
+	major     int
+	minor     int
+	majmin    string
+	wwn       string
+	mountpint string
+	fstype    string
+	fssize    int64
+	fsused    int64
+	vendor    string
+}
+
 var diskmap map[int]map[int]string
+var devicemap map[int]map[int]blkdevice
 
 func init() {
 	log.SetLevel(log.DebugLevel)
@@ -37,7 +55,6 @@ func init() {
 }
 
 func main() {
-
 	// Subscribe to signals for terminating the program.
 	stopper := make(chan os.Signal, 1)
 	signal.Notify(stopper, os.Interrupt, syscall.SIGTERM)
@@ -90,25 +107,22 @@ func main() {
 		log.Fatal(err)
 	}
 	defer link2.Close()
-	
-	
+
 	err = parseDiskStat()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	l1,l5,l15,err := parseLoadAvg()
+	err = parseLsblk()
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Debugf("[%f][%f][%f]",l1,l5,l15)
 
-	out, err := utils.ExecCommandWithTimeout("cat", 5, "/proc/diskstats")
+	l1, l5, l15, err := parseLoadAvg()
 	if err != nil {
-		log.Error(err)
-		return
+		log.Fatal(err)
 	}
-	log.Debugf("[%s]", out)
+	log.Debugf("[%f][%f][%f]", l1, l5, l15)
 
 	go func() {
 		<-stopper
@@ -137,38 +151,83 @@ func main() {
 			vals = append(vals, val)
 		}
 
-		for k,info:= range keys {
-			v:=vals[k]
-			
-			var rw,diskname string 
+		for k, info := range keys {
+			v := vals[k]
+
+			var rw, diskname string
 			var avgms float32
-			major:=info.Major
-			minor:=info.Minor
-			pid:=info.Pid
-			name:=convToString(info.Name[:])
-			if info.Rwflag==0 {
-				rw="W"
-			}else{
-				rw="R"
+			major := info.Major
+			minor := info.Minor
+			pid := info.Pid
+			name := convToString(info.Name[:])
+			if info.Rwflag == 0 {
+				rw = "W"
+			} else {
+				rw = "R"
 			}
-			diskname,exist:= diskmap[int(major)][int(minor)]
+			diskname, exist := diskmap[int(major)][int(minor)]
 			if !exist {
-				diskname="no disk name"
+				diskname = "no disk name"
 			}
-			io:=val.Io
-			bytes:=val.Bytes/1024
-			if val.Io !=0 {
-				avgms= float32(v.Us)/ float32(1000) /float32(v.Io)
-			}			
+			io := val.Io
+			bytes := val.Bytes / 1024
+			if val.Io != 0 {
+				avgms = float32(v.Us) / float32(1000) / float32(v.Io)
+			}
 			fmt.Printf("%-7d %-16s %1s %-3d %-3d %-8s %5d %7d %6.2f\n",
-			pid,name,rw,major,minor,diskname,io,bytes,avgms);
+				pid, name, rw, major, minor, diskname, io, bytes, avgms)
 		}
 	}
 
 }
 
+func parseLsblk() error {
+	devicemap = make(map[int]map[int]blkdevice)
+	output, err := command.ExecCommandTimeout("lsblk", 5, "-o", "path,maj:min,wwn")
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	reader := bytes.NewReader([]byte(output))
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+		// Parse major and minor numbers
+		var path, majmin, wwn string
+
+		fmt.Sscanf(fields[0], "%d", &path)
+		fmt.Sscanf(fields[1], "%d", &majmin)
+		fmt.Sscanf(fields[2], "%s", &wwn)
+		s := strings.Split(majmin, ":")
+		major, _ := strconv.Atoi(s[0])
+		minor, _ := strconv.Atoi(s[1])
+
+		if _, exists := diskmap[major]; !exists {
+			devicemap[major] = make(map[int]blkdevice)
+		}
+		blk := blkdevice{
+			path:   path,
+			major:  major,
+			minor:  minor,
+			majmin: majmin,
+			wwn:    wwn,
+		}
+		devicemap[major][minor] = blk
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Error("Error reading file:", err)
+		return err
+	}
+	return nil
+}
+
 func parseDiskStat() error {
-	diskmap=make(map[int]map[int]string)
+	diskmap = make(map[int]map[int]string)
 	file, err := os.Open("/proc/diskstats")
 	if err != nil {
 		log.Error("Error opening file:", err)
@@ -205,7 +264,7 @@ func parseDiskStat() error {
 	return nil
 }
 
-func parseLoadAvg() (l1, l5, l15 float32, err error) {	
+func parseLoadAvg() (l1, l5, l15 float32, err error) {
 	file, err := os.Open("/proc/loadavg")
 	if err != nil {
 		log.Error("Error opening file:", err)
@@ -245,9 +304,9 @@ func convToString(param interface{}) string {
 		dbytes := make([]byte, len(ival))
 		for i, v := range ival {
 			dbytes[i] = byte(v)
-		}		
+		}
 		str := unix.ByteSliceToString(dbytes)
-		return strings.Trim(str, " ")	
+		return strings.Trim(str, " ")
 	default:
 		fmt.Println("type:", v)
 	}
