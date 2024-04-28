@@ -332,7 +332,7 @@ struct args_t {
 };
 ```
 
-## Couldn't load trivial BPF program.
+## failed to create kprobe 'nfs_file_read+0x0' 
 * libbpf: prog 'file_read_entry': failed to create kprobe 'nfs_file_read+0x0' 
 * perf event: No such file or directory
 * Error in bpf_object__probe_loading():Operation not permitted(1). 
