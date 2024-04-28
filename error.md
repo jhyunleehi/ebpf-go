@@ -331,3 +331,25 @@ struct args_t {
 	int flags;
 };
 ```
+
+## Couldn't load trivial BPF program.
+* libbpf: prog 'file_read_entry': failed to create kprobe 'nfs_file_read+0x0' 
+* perf event: No such file or directory
+* Error in bpf_object__probe_loading():Operation not permitted(1). 
+* Couldn't load trivial BPF program. 
+* Make sure your kernel supports BPF (CONFIG_BPF_SYSCALL=y) and/or that RLIMIT_MEMLOCK is set to big enough value.
+```sh
+hyunlee@Good:~/go/src/eBPF/bcc/libbpf-tools$ ./nfsslower 
+libbpf: Failed to bump RLIMIT_MEMLOCK (err = -1), you might need to do it explicitly!
+libbpf: Error in bpf_object__probe_loading():Operation not permitted(1). Couldn't load trivial BPF program. Make sure your kernel supports BPF (CONFIG_BPF_SYSCALL=y) and/or that RLIMIT_MEMLOCK is set to big enough value.
+libbpf: failed to load object 'fsslower_bpf'
+libbpf: failed to load BPF skeleton 'fsslower_bpf': -1
+failed to load BPF object: -1
+
+
+jhyunlee@Good:~/go/src/eBPF/bcc/libbpf-tools$ sudo  ./nfsslower 
+[sudo] jhyunlee 암호: 
+libbpf: prog 'file_read_entry': failed to create kprobe 'nfs_file_read+0x0' perf event: No such file or directory
+failed to attach kprobe: -2
+failed to attach BPF programs: -2
+```
