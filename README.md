@@ -657,3 +657,55 @@ $ cat /sys/kernel/debug/tracing/trace
 필요에 따라 trace-cmd 또는 perf와 같은 도구를 사용하여 추적 결과를 분석할 수 있습니다.
 
 
+
+
+
+##  install bpftool 
+* ~/code/eBPF/bcc/libbpf-tools/bpftool
+
+```sh
+$ sudo apt-get update -y
+$ sudo  apt-get install -y build-essential curl libbpf-dev clang libelf-dev linux-tools-$(uname -r) llvm
+$ git clone --recurse-submodules https://github.com/libbpf/bpftool.git
+$ git submodule update --init
+$ cd  libbpf/src
+$ make 
+$ sudo  make install
+
+$ sudo apt install llvm
+$ cd  bpftool/src
+$ make
+$ export  LANG=C
+$ make
+...                        libbfd: [ OFF ]
+...               clang-bpf-co-re: [ on  ]
+...                          llvm: [ OFF ]
+...                        libcap: [ OFF ]
+  GEN      profiler.skel.h
+  CC       prog.o
+  CC       struct_ops.o
+  CC       tracelog.o
+  CC       xlated_dumper.o
+  CC       disasm.o
+  LINK     bpftool
+
+$ sudo make install
+[sudo] password for jhyunlee: 
+...                        libbfd: [ OFF ]
+...               clang-bpf-co-re: [ on  ]
+...                          llvm: [ OFF ]
+...                        libcap: [ OFF ]
+  INSTALL  bpftool
+$ bpftool
+
+Usage: bpftool [OPTIONS] OBJECT { COMMAND | help }
+       bpftool batch file FILE
+       bpftool version
+
+       OBJECT := { prog | map | link | cgroup | perf | net | feature | btf | gen | struct_ops | iter }
+       OPTIONS := { {-j|--json} [{-p|--pretty}] | {-d|--debug} |
+                    {-V|--version} }
+
+$ which bpftool
+/usr/local/sbin/bpftool
+```

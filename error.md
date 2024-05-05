@@ -401,3 +401,81 @@ Tracing nfs operations slower than 10 ms... Hit Ctrl-C to end.
 TIME     COMM             PID     T BYTES   OFF_KB   LAT(ms) FILENAME
 
 ```
+
+
+### bpftool not found 
+
+```sh
+jh@client:~/code/ebpf-go/ex05-opensnoop$ make
+bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
+/bin/sh: 1: bpftool: not found
+make: *** [Makefile:36: vmlinux.h] Error 127
+```
+==> install bpftool 
+* ~/code/eBPF/bcc/libbpf-tools/bpftool
+
+```sh
+$ sudo apt-get update -y
+$ sudo  apt-get install -y build-essential curl libbpf-dev clang libelf-dev linux-tools-$(uname -r) llvm
+$ git clone --recurse-submodules https://github.com/libbpf/bpftool.git
+$ git submodule update --init
+$ cd  libbpf/src
+$ make 
+$ sudo  make install
+
+$ sudo apt install llvm
+$ cd  bpftool/src
+$ make
+$ export  LANG=C
+$ make
+...                        libbfd: [ OFF ]
+...               clang-bpf-co-re: [ on  ]
+...                          llvm: [ OFF ]
+...                        libcap: [ OFF ]
+  GEN      profiler.skel.h
+  CC       prog.o
+  CC       struct_ops.o
+  CC       tracelog.o
+  CC       xlated_dumper.o
+  CC       disasm.o
+  LINK     bpftool
+
+$ sudo make install
+[sudo] password for jhyunlee: 
+...                        libbfd: [ OFF ]
+...               clang-bpf-co-re: [ on  ]
+...                          llvm: [ OFF ]
+...                        libcap: [ OFF ]
+  INSTALL  bpftool
+$ bpftool
+
+Usage: bpftool [OPTIONS] OBJECT { COMMAND | help }
+       bpftool batch file FILE
+       bpftool version
+
+       OBJECT := { prog | map | link | cgroup | perf | net | feature | btf | gen | struct_ops | iter }
+       OPTIONS := { {-j|--json} [{-p|--pretty}] | {-d|--debug} |
+                    {-V|--version} }
+
+$ which bpftool
+/usr/local/sbin/bpftool
+```
+
+==> Install and compile BCC
+```sh
+$ git clone https://github.com/iovisor/bcc.git
+$ mkdir bcc/build; cd bcc/build
+$ cmake ..
+$ make
+$ sudo make install
+$ cmake -DPYTHON_CMD=python3 .. # build python3 binding
+$ pushd src/python/
+$ make
+$ sudo make install
+$ popd
+```
+
+
+
+
+
