@@ -54,7 +54,7 @@ There are six things to learn from this:
 
 3. `void *ctx`: ctx has arguments, but since we aren't using them here, we'll just cast it to `void *`.
 
-4. `bpf_trace_printk()`:  ftrace를 이용하는 /sys/kernel/debug/tracing/tracing_on 해서 ftrace 하면  /sys/kernle/debug/traice/trace_pipe 한다. 커널에서 printf 사용 기능. (/sys/kernel/debug/tracing/trace_pipe).단순하게 뭔가 출력할때 사용하는 것은 ok 이지만 최대 arg는 3개만 사용할 수 있는 제약이 있다. trace_pipe는 global share 하기 때문에 출력이 충돌된다. 아무튼 BPF_PERF_OUTPUT을 사용해야 한다. This is ok for some quick examples, but has limitations: 3 args max, 1 %s only, and trace_pipe is globally shared, so concurrent programs will have clashing output. A better interface is via BPF_PERF_OUTPUT(), covered later.
+4. `bpf_trace_()`:  ftrace를 이용하는 /sys/kernel/debug/tracing/tracing_on 해서 ftrace 하면  /sys/kernle/debug/traice/trace_pipe 한다. 커널에서 printf 사용 기능. (/sys/kernel/debug/tracing/trace_pipe).단순하게 뭔가 출력할때 사용하는 것은 ok 이지만 최대 arg는 3개만 사용할 수 있는 제약이 있다. trace_pipe는 global share 하기 때문에 출력이 충돌된다. 아무튼 BPF_PERF_OUTPUT을 사용해야 한다. This is ok for some quick examples, but has limitations: 3 args max, 1 %s only, and trace_pipe is globally shared, so concurrent programs will have clashing output. A better interface is via BPF_PERF_OUTPUT(), covered later.
 
 5. `return 0;`: return에 대한 필요한 기본 요구사항, Necessary formality (if you want to know why, see [#139](https://github.com/iovisor/bcc/issues/139)).
 

@@ -331,3 +331,73 @@ struct args_t {
 	int flags;
 };
 ```
+
+## failed to create kprobe 'nfs_file_read+0x0' 
+* libbpf: prog 'file_read_entry': failed to create kprobe 'nfs_file_read+0x0' 
+* perf event: No such file or directory
+* Error in bpf_object__probe_loading():Operation not permitted(1). 
+* Couldn't load trivial BPF program. 
+* Make sure your kernel supports BPF (CONFIG_BPF_SYSCALL=y) and/or that RLIMIT_MEMLOCK is set to big enough value.
+```sh
+$ ./nfsslower 
+libbpf: Failed to bump RLIMIT_MEMLOCK (err = -1), you might need to do it explicitly!
+libbpf: Error in bpf_object__probe_loading():Operation not permitted(1). Couldn't load trivial BPF program. Make sure your kernel supports BPF (CONFIG_BPF_SYSCALL=y) and/or that RLIMIT_MEMLOCK is set to big enough value.
+libbpf: failed to load object 'fsslower_bpf'
+libbpf: failed to load BPF skeleton 'fsslower_bpf': -1
+failed to load BPF object: -1
+
+
+j$ sudo  ./nfsslower 
+[sudo] jhyunlee 암호: 
+libbpf: prog 'file_read_entry': failed to create kprobe 'nfs_file_read+0x0' perf event: No such file or directory
+failed to attach kprobe: -2
+failed to attach BPF programs: -2
+```
+
+==> nfs kernel 모듈이 load 되었는지 부터 확인하라.
+
+
+https://github.com/iovisor/bcc/issues/3438
+
+```sh
+root@Good:/lib/modules/6.5.0-28-generic/kernel/fs# sudo modprobe nfs
+
+root@Good:/lib/modules/6.5.0-28-generic/kernel/fs# lsmod | grep nfs
+nfs                   581632  0
+lockd                 143360  1 nfs
+fscache               389120  1 nfs
+netfs                  61440  2 fscache,nfs
+sunrpc                811008  3 lockd,nfs
+
+root@Good:/lib/modules/6.5.0-28-generic/kernel/fs# ls
+9p      befs            ceph    erofs     fscache  hpfs   minix       nilfs2  omfs       qnx6      sysv    xfs
+adfs    bfs             coda    exfat     fuse     isofs  netfs       nls     orangefs   quota     ubifs   zonefs
+affs    binfmt_misc.ko  cramfs  f2fs      gfs2     jffs2  nfs         ntfs    overlayfs  reiserfs  udf
+afs     btrfs           dlm     fat       hfs      jfs    nfs_common  ntfs3   pstore     romfs     ufs
+autofs  cachefiles      efs     freevxfs  hfsplus  lockd  nfsd        ocfs2   qnx4       smb       vboxsf
+
+
+
+root@Good:/lib/modules/6.5.0-28-generic/kernel/fs# grep   nfs_file_read  /proc/kallsyms 
+ffffffffc26e2dc0 t nfs_file_read	[nfs]
+
+root@Good:/sys/kernel/debug/tracing# grep nfs_file_read avail*
+available_filter_functions:kernfs_file_read_iter
+available_filter_functions:nfs_file_read [nfs]
+available_filter_functions_addrs:ffffffff99383ea0 kernfs_file_read_iter
+available_filter_functions_addrs:ffffffffc26e2dc0 nfs_file_read [nfs]
+
+```
+
+==>
+
+```sh
+jhyunlee@Good:~/go/src/eBPF/bcc/libbpf-tools$ sudo ./fsslower -t xfs
+libbpf: prog 'file_read_entry': failed to create kprobe 'xfs_file_read_iter+0x0' perf event: No such file or directory
+failed to attach kprobe: -2
+failed to attach BPF programs: -2
+jhyunlee@Good:~/go/src/eBPF/bcc/libbpf-tools$ sudo ./fsslower -t nfs
+Tracing nfs operations slower than 10 ms... Hit Ctrl-C to end.
+TIME     COMM             PID     T BYTES   OFF_KB   LAT(ms) FILENAME
+
+```
