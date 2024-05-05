@@ -3,7 +3,7 @@ module ebpf-go/ex01
 go 1.22.0
 
 require (
-	github.com/cilium/ebpf v0.14.0
+	github.com/cilium/ebpf v0.15.0
 	golang.org/x/sys v0.18.0
 )
 
